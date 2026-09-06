@@ -1,0 +1,167 @@
+{
+  "invoice_id": 1,
+  "invoice_number": "INV-2024001",
+  "status": "paid",
+  "currency": "GBP",
+  "issue_date": "2026-07-16",
+  "due_date": "2026-07-31",
+  "total_amount": "51046.84",
+  "notes": "Stop wonder strong week also.",
+  "created_at": "2026-09-04T09:48:26.820557",
+  "supplier": {
+    "supplier_code": "SUP-000118",
+    "name": "Roberts, Wood and Ortiz",
+    "country": "Spain",
+    "country_code": "ES",
+    "tax_id": "ES712402601",
+    "address": {
+      "line1": "3745 Kim Flat Suite 528",
+      "city": "North Seanburgh",
+      "postal_code": "56513",
+      "country_code": "ES"
+    }
+  },
+  "line_items": [
+    {
+      "line_number": 1,
+      "description": "Office chairs",
+      "quantity": 14,
+      "unit_price": "141.31",
+      "line_total": "1978.34",
+      "allocations": [
+        {
+          "cost_center": "CC-3400",
+          "cost_center_name": "Facilities",
+          "gl_account": "6300",
+          "project_code": null,
+          "percentage": "50.00",
+          "amount": "989.17"
+        },
+        {
+          "cost_center": "CC-1040",
+          "cost_center_name": "R&D Stuttgart",
+          "gl_account": "6300",
+          "project_code": "PRJ-41",
+          "percentage": "50.00",
+          "amount": "989.17"
+        }
+      ]
+    },
+    {
+      "line_number": 2,
+      "description": "Cloud hosting services",
+      "quantity": 13,
+      "unit_price": "199.17",
+      "line_total": "2589.21",
+      "allocations": [
+        {
+          "cost_center": "CC-3010",
+          "cost_center_name": "IT Shared Services",
+          "gl_account": "6420",
+          "project_code": "PRJ-58",
+          "percentage": "50.00",
+          "amount": "1294.60"
+        },
+        {
+          "cost_center": "CC-1040",
+          "cost_center_name": "R&D Stuttgart",
+          "gl_account": "6420",
+          "project_code": null,
+          "percentage": "50.00",
+          "amount": "1294.61"
+        }
+      ]
+    },
+    {
+      "line_number": 3,
+      "description": "Consulting hours",
+      "quantity": 40,
+      "unit_price": "472.70",
+      "line_total": "18908.00",
+      "allocations": [
+        {
+          "cost_center": "CC-2210",
+          "cost_center_name": "Sales DACH",
+          "gl_account": "6120",
+          "project_code": "PRJ-99",
+          "percentage": "60.00",
+          "amount": "11344.80"
+        },
+        {
+          "cost_center": "CC-5000",
+          "cost_center_name": "Group Functions",
+          "gl_account": "6120",
+          "project_code": "PRJ-92",
+          "percentage": "40.00",
+          "amount": "7563.20"
+        }
+      ]
+    },
+    {
+      "line_number": 4,
+      "description": "Software licenses",
+      "quantity": 16,
+      "unit_price": "320.64",
+      "line_total": "5130.24",
+      "allocations": [
+        {
+          "cost_center": "CC-5000",
+          "cost_center_name": "Group Functions",
+          "gl_account": "6430",
+          "project_code": "PRJ-68",
+          "percentage": "50.00",
+          "amount": "2565.12"
+        },
+        {
+          "cost_center": "CC-5000",
+          "cost_center_name": "Group Functions",
+          "gl_account": "6430",
+          "project_code": null,
+          "percentage": "30.00",
+          "amount": "1539.07"
+        },
+        {
+          "cost_center": "CC-3010",
+          "cost_center_name": "IT Shared Services",
+          "gl_account": "6430",
+          "project_code": "PRJ-18",
+          "percentage": "20.00",
+          "amount": "1026.05"
+        }
+      ]
+    },
+    {
+      "line_number": 5,
+      "description": "Warehouse shelving",
+      "quantity": 45,
+      "unit_price": "498.69",
+      "line_total": "22441.05",
+      "allocations": [
+        {
+          "cost_center": "CC-4100",
+          "cost_center_name": "Logistics",
+          "gl_account": "6310",
+          "project_code": null,
+          "percentage": "50.00",
+          "amount": "11220.52"
+        },
+        {
+          "cost_center": "CC-4100",
+          "cost_center_name": "Logistics",
+          "gl_account": "6310",
+          "project_code": "PRJ-35",
+          "percentage": "30.00",
+          "amount": "6732.32"
+        },
+        {
+          "cost_center": "CC-1040",
+          "cost_center_name": "R&D Stuttgart",
+          "gl_account": "6310",
+          "project_code": null,
+          "percentage": "20.00",
+          "amount": "4488.21"
+        }
+      ]
+    }
+  ]
+}

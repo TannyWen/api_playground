@@ -1,0 +1,1173 @@
+{
+  "data": [
+    {
+      "invoice_id": 1,
+      "invoice_number": "INV-2024001",
+      "status": "paid",
+      "currency": "GBP",
+      "issue_date": "2026-07-16",
+      "due_date": "2026-07-31",
+      "total_amount": "51046.84",
+      "notes": "Stop wonder strong week also.",
+      "created_at": "2026-09-04T09:48:26.820557",
+      "supplier": {
+        "supplier_code": "SUP-000118",
+        "name": "Roberts, Wood and Ortiz",
+        "country": "Spain",
+        "country_code": "ES",
+        "tax_id": "ES712402601",
+        "address": {
+          "line1": "3745 Kim Flat Suite 528",
+          "city": "North Seanburgh",
+          "postal_code": "56513",
+          "country_code": "ES"
+        }
+      },
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Office chairs",
+          "quantity": 14,
+          "unit_price": "141.31",
+          "line_total": "1978.34",
+          "allocations": [
+            {
+              "cost_center": "CC-3400",
+              "cost_center_name": "Facilities",
+              "gl_account": "6300",
+              "project_code": null,
+              "percentage": "50.00",
+              "amount": "989.17"
+            },
+            {
+              "cost_center": "CC-1040",
+              "cost_center_name": "R&D Stuttgart",
+              "gl_account": "6300",
+              "project_code": "PRJ-41",
+              "percentage": "50.00",
+              "amount": "989.17"
+            }
+          ]
+        },
+        {
+          "line_number": 2,
+          "description": "Cloud hosting services",
+          "quantity": 13,
+          "unit_price": "199.17",
+          "line_total": "2589.21",
+          "allocations": [
+            {
+              "cost_center": "CC-3010",
+              "cost_center_name": "IT Shared Services",
+              "gl_account": "6420",
+              "project_code": "PRJ-58",
+              "percentage": "50.00",
+              "amount": "1294.60"
+            },
+            {
+              "cost_center": "CC-1040",
+              "cost_center_name": "R&D Stuttgart",
+              "gl_account": "6420",
+              "project_code": null,
+              "percentage": "50.00",
+              "amount": "1294.61"
+            }
+          ]
+        },
+        {
+          "line_number": 3,
+          "description": "Consulting hours",
+          "quantity": 40,
+          "unit_price": "472.70",
+          "line_total": "18908.00",
+          "allocations": [
+            {
+              "cost_center": "CC-2210",
+              "cost_center_name": "Sales DACH",
+              "gl_account": "6120",
+              "project_code": "PRJ-99",
+              "percentage": "60.00",
+              "amount": "11344.80"
+            },
+            {
+              "cost_center": "CC-5000",
+              "cost_center_name": "Group Functions",
+              "gl_account": "6120",
+              "project_code": "PRJ-92",
+              "percentage": "40.00",
+              "amount": "7563.20"
+            }
+          ]
+        },
+        {
+          "line_number": 4,
+          "description": "Software licenses",
+          "quantity": 16,
+          "unit_price": "320.64",
+          "line_total": "5130.24",
+          "allocations": [
+            {
+              "cost_center": "CC-5000",
+              "cost_center_name": "Group Functions",
+              "gl_account": "6430",
+              "project_code": "PRJ-68",
+              "percentage": "50.00",
+              "amount": "2565.12"
+            },
+            {
+              "cost_center": "CC-5000",
+              "cost_center_name": "Group Functions",
+              "gl_account": "6430",
+              "project_code": null,
+              "percentage": "30.00",
+              "amount": "1539.07"
+            },
+            {
+              "cost_center": "CC-3010",
+              "cost_center_name": "IT Shared Services",
+              "gl_account": "6430",
+              "project_code": "PRJ-18",
+              "percentage": "20.00",
+              "amount": "1026.05"
+            }
+          ]
+        },
+        {
+          "line_number": 5,
+          "description": "Warehouse shelving",
+          "quantity": 45,
+          "unit_price": "498.69",
+          "line_total": "22441.05",
+          "allocations": [
+            {
+              "cost_center": "CC-4100",
+              "cost_center_name": "Logistics",
+              "gl_account": "6310",
+              "project_code": null,
+              "percentage": "50.00",
+              "amount": "11220.52"
+            },
+            {
+              "cost_center": "CC-4100",
+              "cost_center_name": "Logistics",
+              "gl_account": "6310",
+              "project_code": "PRJ-35",
+              "percentage": "30.00",
+              "amount": "6732.32"
+            },
+            {
+              "cost_center": "CC-1040",
+              "cost_center_name": "R&D Stuttgart",
+              "gl_account": "6310",
+              "project_code": null,
+              "percentage": "20.00",
+              "amount": "4488.21"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "invoice_id": 2,
+      "invoice_number": "INV-2024002",
+      "status": "submitted",
+      "currency": "EUR",
+      "issue_date": "2025-09-09",
+      "due_date": "2025-10-09",
+      "total_amount": "36575.33",
+      "notes": null,
+      "created_at": "2026-09-04T09:48:26.833598",
+      "supplier": {
+        "supplier_code": "SUP-000022",
+        "name": "Ruiz Ltd",
+        "country": "Sweden",
+        "country_code": "SE",
+        "tax_id": "SE761390597",
+        "address": {
+          "line1": "613 Nicole Avenue",
+          "city": "Sawyerland",
+          "postal_code": "71456",
+          "country_code": "SE"
+        }
+      },
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Safety helmets",
+          "quantity": 21,
+          "unit_price": "250.68",
+          "line_total": "5264.28",
+          "allocations": [
+            {
+              "cost_center": "CC-1002",
+              "cost_center_name": "R&D Helsinki",
+              "gl_account": "6210",
+              "project_code": null,
+              "percentage": "50.00",
+              "amount": "2632.14"
+            },
+            {
+              "cost_center": "CC-5000",
+              "cost_center_name": "Group Functions",
+              "gl_account": "6210",
+              "project_code": "PRJ-54",
+              "percentage": "50.00",
+              "amount": "2632.14"
+            }
+          ]
+        },
+        {
+          "line_number": 2,
+          "description": "Warehouse shelving",
+          "quantity": 17,
+          "unit_price": "243.50",
+          "line_total": "4139.50",
+          "allocations": [
+            {
+              "cost_center": "CC-2001",
+              "cost_center_name": "Sales Nordics",
+              "gl_account": "6310",
+              "project_code": null,
+              "percentage": "50.00",
+              "amount": "2069.75"
+            },
+            {
+              "cost_center": "CC-1002",
+              "cost_center_name": "R&D Helsinki",
+              "gl_account": "6310",
+              "project_code": "PRJ-46",
+              "percentage": "50.00",
+              "amount": "2069.75"
+            }
+          ]
+        },
+        {
+          "line_number": 3,
+          "description": "Laptop docking stations",
+          "quantity": 40,
+          "unit_price": "88.65",
+          "line_total": "3546.00",
+          "allocations": [
+            {
+              "cost_center": "CC-2001",
+              "cost_center_name": "Sales Nordics",
+              "gl_account": "6410",
+              "project_code": null,
+              "percentage": "70.00",
+              "amount": "2482.20"
+            },
+            {
+              "cost_center": "CC-3010",
+              "cost_center_name": "IT Shared Services",
+              "gl_account": "6410",
+              "project_code": null,
+              "percentage": "30.00",
+              "amount": "1063.80"
+            }
+          ]
+        },
+        {
+          "line_number": 4,
+          "description": "Safety helmets",
+          "quantity": 50,
+          "unit_price": "440.86",
+          "line_total": "22043.00",
+          "allocations": [
+            {
+              "cost_center": "CC-4100",
+              "cost_center_name": "Logistics",
+              "gl_account": "6210",
+              "project_code": null,
+              "percentage": "70.00",
+              "amount": "15430.10"
+            },
+            {
+              "cost_center": "CC-1040",
+              "cost_center_name": "R&D Stuttgart",
+              "gl_account": "6210",
+              "project_code": null,
+              "percentage": "30.00",
+              "amount": "6612.90"
+            }
+          ]
+        },
+        {
+          "line_number": 5,
+          "description": "Cloud hosting services",
+          "quantity": 31,
+          "unit_price": "51.05",
+          "line_total": "1582.55",
+          "allocations": [
+            {
+              "cost_center": "CC-3400",
+              "cost_center_name": "Facilities",
+              "gl_account": "6420",
+              "project_code": "PRJ-94",
+              "percentage": "100.00",
+              "amount": "1582.55"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "invoice_id": 3,
+      "invoice_number": "INV-2024003",
+      "status": "submitted",
+      "currency": "USD",
+      "issue_date": "2025-10-18",
+      "due_date": "2025-12-02",
+      "total_amount": "12912.03",
+      "notes": "Agree best risk middle itself one.",
+      "created_at": "2026-09-04T09:48:26.842494",
+      "supplier": {
+        "supplier_code": "SUP-000080",
+        "name": "Massey and Sons",
+        "country": "Italy",
+        "country_code": "IT",
+        "tax_id": "IT791026033",
+        "address": {
+          "line1": "725 Moore Ridges",
+          "city": "Schroederborough",
+          "postal_code": "95905",
+          "country_code": "IT"
+        }
+      },
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Cloud hosting services",
+          "quantity": 30,
+          "unit_price": "173.76",
+          "line_total": "5212.80",
+          "allocations": [
+            {
+              "cost_center": "CC-1002",
+              "cost_center_name": "R&D Helsinki",
+              "gl_account": "6420",
+              "project_code": "PRJ-13",
+              "percentage": "60.00",
+              "amount": "3127.68"
+            },
+            {
+              "cost_center": "CC-4100",
+              "cost_center_name": "Logistics",
+              "gl_account": "6420",
+              "project_code": "PRJ-37",
+              "percentage": "40.00",
+              "amount": "2085.12"
+            }
+          ]
+        },
+        {
+          "line_number": 2,
+          "description": "Industrial lubricant",
+          "quantity": 20,
+          "unit_price": "5.70",
+          "line_total": "114.00",
+          "allocations": [
+            {
+              "cost_center": "CC-2210",
+              "cost_center_name": "Sales DACH",
+              "gl_account": "5300",
+              "project_code": null,
+              "percentage": "70.00",
+              "amount": "79.80"
+            },
+            {
+              "cost_center": "CC-3010",
+              "cost_center_name": "IT Shared Services",
+              "gl_account": "5300",
+              "project_code": "PRJ-28",
+              "percentage": "30.00",
+              "amount": "34.20"
+            }
+          ]
+        },
+        {
+          "line_number": 3,
+          "description": "Packaging materials",
+          "quantity": 17,
+          "unit_price": "446.19",
+          "line_total": "7585.23",
+          "allocations": [
+            {
+              "cost_center": "CC-1040",
+              "cost_center_name": "R&D Stuttgart",
+              "gl_account": "5200",
+              "project_code": null,
+              "percentage": "40.00",
+              "amount": "3034.09"
+            },
+            {
+              "cost_center": "CC-3400",
+              "cost_center_name": "Facilities",
+              "gl_account": "5200",
+              "project_code": "PRJ-63",
+              "percentage": "30.00",
+              "amount": "2275.57"
+            },
+            {
+              "cost_center": "CC-2210",
+              "cost_center_name": "Sales DACH",
+              "gl_account": "5200",
+              "project_code": "PRJ-84",
+              "percentage": "30.00",
+              "amount": "2275.57"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "invoice_id": 4,
+      "invoice_number": "INV-2024004",
+      "status": "overdue",
+      "currency": "USD",
+      "issue_date": "2026-02-24",
+      "due_date": "2026-03-11",
+      "total_amount": "32730.93",
+      "notes": "Idea himself report class research nation.",
+      "created_at": "2026-09-04T09:48:26.858335",
+      "supplier": {
+        "supplier_code": "SUP-000024",
+        "name": "Pratt LLC",
+        "country": "United Kingdom",
+        "country_code": "GB",
+        "tax_id": "GB167065398",
+        "address": {
+          "line1": "809 Michelle Knolls Suite 775",
+          "city": "North Annachester",
+          "postal_code": "33006",
+          "country_code": "GB"
+        }
+      },
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Printer toner cartridges",
+          "quantity": 14,
+          "unit_price": "316.73",
+          "line_total": "4434.22",
+          "allocations": [
+            {
+              "cost_center": "CC-3010",
+              "cost_center_name": "IT Shared Services",
+              "gl_account": "6100",
+              "project_code": null,
+              "percentage": "50.00",
+              "amount": "2217.11"
+            },
+            {
+              "cost_center": "CC-2001",
+              "cost_center_name": "Sales Nordics",
+              "gl_account": "6100",
+              "project_code": "PRJ-67",
+              "percentage": "50.00",
+              "amount": "2217.11"
+            }
+          ]
+        },
+        {
+          "line_number": 2,
+          "description": "Printer toner cartridges",
+          "quantity": 17,
+          "unit_price": "280.24",
+          "line_total": "4764.08",
+          "allocations": [
+            {
+              "cost_center": "CC-2001",
+              "cost_center_name": "Sales Nordics",
+              "gl_account": "6100",
+              "project_code": "PRJ-70",
+              "percentage": "70.00",
+              "amount": "3334.86"
+            },
+            {
+              "cost_center": "CC-5000",
+              "cost_center_name": "Group Functions",
+              "gl_account": "6100",
+              "project_code": null,
+              "percentage": "30.00",
+              "amount": "1429.22"
+            }
+          ]
+        },
+        {
+          "line_number": 3,
+          "description": "Packaging materials",
+          "quantity": 39,
+          "unit_price": "278.01",
+          "line_total": "10842.39",
+          "allocations": [
+            {
+              "cost_center": "CC-1040",
+              "cost_center_name": "R&D Stuttgart",
+              "gl_account": "5200",
+              "project_code": "PRJ-57",
+              "percentage": "40.00",
+              "amount": "4336.96"
+            },
+            {
+              "cost_center": "CC-2210",
+              "cost_center_name": "Sales DACH",
+              "gl_account": "5200",
+              "project_code": "PRJ-64",
+              "percentage": "30.00",
+              "amount": "3252.72"
+            },
+            {
+              "cost_center": "CC-2210",
+              "cost_center_name": "Sales DACH",
+              "gl_account": "5200",
+              "project_code": null,
+              "percentage": "30.00",
+              "amount": "3252.71"
+            }
+          ]
+        },
+        {
+          "line_number": 4,
+          "description": "Safety helmets",
+          "quantity": 24,
+          "unit_price": "411.88",
+          "line_total": "9885.12",
+          "allocations": [
+            {
+              "cost_center": "CC-2001",
+              "cost_center_name": "Sales Nordics",
+              "gl_account": "6210",
+              "project_code": null,
+              "percentage": "100.00",
+              "amount": "9885.12"
+            }
+          ]
+        },
+        {
+          "line_number": 5,
+          "description": "Printer toner cartridges",
+          "quantity": 32,
+          "unit_price": "87.66",
+          "line_total": "2805.12",
+          "allocations": [
+            {
+              "cost_center": "CC-5000",
+              "cost_center_name": "Group Functions",
+              "gl_account": "6100",
+              "project_code": null,
+              "percentage": "50.00",
+              "amount": "1402.56"
+            },
+            {
+              "cost_center": "CC-5000",
+              "cost_center_name": "Group Functions",
+              "gl_account": "6100",
+              "project_code": null,
+              "percentage": "30.00",
+              "amount": "841.54"
+            },
+            {
+              "cost_center": "CC-1002",
+              "cost_center_name": "R&D Helsinki",
+              "gl_account": "6100",
+              "project_code": "PRJ-39",
+              "percentage": "20.00",
+              "amount": "561.02"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "invoice_id": 5,
+      "invoice_number": "INV-2024005",
+      "status": "overdue",
+      "currency": "USD",
+      "issue_date": "2026-08-23",
+      "due_date": "2026-09-22",
+      "total_amount": "45967.96",
+      "notes": null,
+      "created_at": "2026-09-04T09:48:26.858335",
+      "supplier": {
+        "supplier_code": "SUP-000052",
+        "name": "Smith-Howell",
+        "country": "Sweden",
+        "country_code": "SE",
+        "tax_id": "SE435760963",
+        "address": {
+          "line1": "8105 Jimenez Spur",
+          "city": "Manuelland",
+          "postal_code": "13855",
+          "country_code": "SE"
+        }
+      },
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Steel pipes",
+          "quantity": 50,
+          "unit_price": "391.77",
+          "line_total": "19588.50",
+          "allocations": [
+            {
+              "cost_center": "CC-3400",
+              "cost_center_name": "Facilities",
+              "gl_account": "5100",
+              "project_code": null,
+              "percentage": "40.00",
+              "amount": "7835.40"
+            },
+            {
+              "cost_center": "CC-2210",
+              "cost_center_name": "Sales DACH",
+              "gl_account": "5100",
+              "project_code": null,
+              "percentage": "30.00",
+              "amount": "5876.55"
+            },
+            {
+              "cost_center": "CC-1002",
+              "cost_center_name": "R&D Helsinki",
+              "gl_account": "5100",
+              "project_code": null,
+              "percentage": "30.00",
+              "amount": "5876.55"
+            }
+          ]
+        },
+        {
+          "line_number": 2,
+          "description": "Office chairs",
+          "quantity": 46,
+          "unit_price": "458.67",
+          "line_total": "21098.82",
+          "allocations": [
+            {
+              "cost_center": "CC-2210",
+              "cost_center_name": "Sales DACH",
+              "gl_account": "6300",
+              "project_code": null,
+              "percentage": "60.00",
+              "amount": "12659.29"
+            },
+            {
+              "cost_center": "CC-2001",
+              "cost_center_name": "Sales Nordics",
+              "gl_account": "6300",
+              "project_code": null,
+              "percentage": "40.00",
+              "amount": "8439.53"
+            }
+          ]
+        },
+        {
+          "line_number": 3,
+          "description": "Safety helmets",
+          "quantity": 37,
+          "unit_price": "142.72",
+          "line_total": "5280.64",
+          "allocations": [
+            {
+              "cost_center": "CC-4100",
+              "cost_center_name": "Logistics",
+              "gl_account": "6210",
+              "project_code": "PRJ-88",
+              "percentage": "50.00",
+              "amount": "2640.32"
+            },
+            {
+              "cost_center": "CC-4100",
+              "cost_center_name": "Logistics",
+              "gl_account": "6210",
+              "project_code": null,
+              "percentage": "30.00",
+              "amount": "1584.19"
+            },
+            {
+              "cost_center": "CC-2210",
+              "cost_center_name": "Sales DACH",
+              "gl_account": "6210",
+              "project_code": null,
+              "percentage": "20.00",
+              "amount": "1056.13"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "invoice_id": 6,
+      "invoice_number": "INV-2024006",
+      "status": "paid",
+      "currency": "EUR",
+      "issue_date": "2026-09-02",
+      "due_date": "2026-09-17",
+      "total_amount": "13365.20",
+      "notes": null,
+      "created_at": "2026-09-04T09:48:26.881361",
+      "supplier": {
+        "supplier_code": "SUP-000110",
+        "name": "Young-Brooks",
+        "country": "France",
+        "country_code": "FR",
+        "tax_id": "FR484236050",
+        "address": {
+          "line1": "43250 King Mountain",
+          "city": "East Shannon",
+          "postal_code": "99530",
+          "country_code": "FR"
+        }
+      },
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Fleet fuel cards",
+          "quantity": 17,
+          "unit_price": "430.48",
+          "line_total": "7318.16",
+          "allocations": [
+            {
+              "cost_center": "CC-1002",
+              "cost_center_name": "R&D Helsinki",
+              "gl_account": "6510",
+              "project_code": "PRJ-61",
+              "percentage": "100.00",
+              "amount": "7318.16"
+            }
+          ]
+        },
+        {
+          "line_number": 2,
+          "description": "Software licenses",
+          "quantity": 32,
+          "unit_price": "188.97",
+          "line_total": "6047.04",
+          "allocations": [
+            {
+              "cost_center": "CC-3400",
+              "cost_center_name": "Facilities",
+              "gl_account": "6430",
+              "project_code": "PRJ-35",
+              "percentage": "60.00",
+              "amount": "3628.22"
+            },
+            {
+              "cost_center": "CC-1040",
+              "cost_center_name": "R&D Stuttgart",
+              "gl_account": "6430",
+              "project_code": "PRJ-79",
+              "percentage": "40.00",
+              "amount": "2418.82"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "invoice_id": 7,
+      "invoice_number": "INV-2024007",
+      "status": "draft",
+      "currency": "EUR",
+      "issue_date": "2026-08-07",
+      "due_date": "2026-09-21",
+      "total_amount": "11573.46",
+      "notes": null,
+      "created_at": "2026-09-04T09:48:26.892132",
+      "supplier": {
+        "supplier_code": "SUP-000001",
+        "name": "Nelson-Carney",
+        "country": "United States",
+        "country_code": "US",
+        "tax_id": null,
+        "address": {
+          "line1": "841 Austin Plain Suite 816",
+          "city": "Johnton",
+          "postal_code": "03298",
+          "country_code": "US"
+        }
+      },
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Steel pipes",
+          "quantity": 27,
+          "unit_price": "352.99",
+          "line_total": "9530.73",
+          "allocations": [
+            {
+              "cost_center": "CC-4100",
+              "cost_center_name": "Logistics",
+              "gl_account": "5100",
+              "project_code": null,
+              "percentage": "40.00",
+              "amount": "3812.29"
+            },
+            {
+              "cost_center": "CC-1040",
+              "cost_center_name": "R&D Stuttgart",
+              "gl_account": "5100",
+              "project_code": "PRJ-63",
+              "percentage": "30.00",
+              "amount": "2859.22"
+            },
+            {
+              "cost_center": "CC-3400",
+              "cost_center_name": "Facilities",
+              "gl_account": "5100",
+              "project_code": null,
+              "percentage": "30.00",
+              "amount": "2859.22"
+            }
+          ]
+        },
+        {
+          "line_number": 2,
+          "description": "Fleet fuel cards",
+          "quantity": 18,
+          "unit_price": "62.06",
+          "line_total": "1117.08",
+          "allocations": [
+            {
+              "cost_center": "CC-3400",
+              "cost_center_name": "Facilities",
+              "gl_account": "6510",
+              "project_code": null,
+              "percentage": "50.00",
+              "amount": "558.54"
+            },
+            {
+              "cost_center": "CC-4100",
+              "cost_center_name": "Logistics",
+              "gl_account": "6510",
+              "project_code": "PRJ-15",
+              "percentage": "30.00",
+              "amount": "335.12"
+            },
+            {
+              "cost_center": "CC-1002",
+              "cost_center_name": "R&D Helsinki",
+              "gl_account": "6510",
+              "project_code": "PRJ-86",
+              "percentage": "20.00",
+              "amount": "223.42"
+            }
+          ]
+        },
+        {
+          "line_number": 3,
+          "description": "Warehouse shelving",
+          "quantity": 15,
+          "unit_price": "61.71",
+          "line_total": "925.65",
+          "allocations": [
+            {
+              "cost_center": "CC-2210",
+              "cost_center_name": "Sales DACH",
+              "gl_account": "6310",
+              "project_code": "PRJ-68",
+              "percentage": "60.00",
+              "amount": "555.39"
+            },
+            {
+              "cost_center": "CC-4100",
+              "cost_center_name": "Logistics",
+              "gl_account": "6310",
+              "project_code": "PRJ-30",
+              "percentage": "40.00",
+              "amount": "370.26"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "invoice_id": 8,
+      "invoice_number": "INV-2024008",
+      "status": "overdue",
+      "currency": "EUR",
+      "issue_date": "2026-09-03",
+      "due_date": "2026-10-18",
+      "total_amount": "31604.76",
+      "notes": null,
+      "created_at": "2026-09-04T09:48:26.908340",
+      "supplier": {
+        "supplier_code": "SUP-000114",
+        "name": "Martin, Anderson and Powell",
+        "country": "France",
+        "country_code": "FR",
+        "tax_id": "FR535048233",
+        "address": {
+          "line1": "31462 Dennis Coves",
+          "city": "North Chelsea",
+          "postal_code": "19564",
+          "country_code": "FR"
+        }
+      },
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Safety helmets",
+          "quantity": 33,
+          "unit_price": "462.98",
+          "line_total": "15278.34",
+          "allocations": [
+            {
+              "cost_center": "CC-5000",
+              "cost_center_name": "Group Functions",
+              "gl_account": "6210",
+              "project_code": null,
+              "percentage": "100.00",
+              "amount": "15278.34"
+            }
+          ]
+        },
+        {
+          "line_number": 2,
+          "description": "Fleet fuel cards",
+          "quantity": 46,
+          "unit_price": "240.11",
+          "line_total": "11045.06",
+          "allocations": [
+            {
+              "cost_center": "CC-4100",
+              "cost_center_name": "Logistics",
+              "gl_account": "6510",
+              "project_code": null,
+              "percentage": "50.00",
+              "amount": "5522.53"
+            },
+            {
+              "cost_center": "CC-2210",
+              "cost_center_name": "Sales DACH",
+              "gl_account": "6510",
+              "project_code": "PRJ-26",
+              "percentage": "50.00",
+              "amount": "5522.53"
+            }
+          ]
+        },
+        {
+          "line_number": 3,
+          "description": "Consulting hours",
+          "quantity": 14,
+          "unit_price": "377.24",
+          "line_total": "5281.36",
+          "allocations": [
+            {
+              "cost_center": "CC-3400",
+              "cost_center_name": "Facilities",
+              "gl_account": "6120",
+              "project_code": null,
+              "percentage": "60.00",
+              "amount": "3168.82"
+            },
+            {
+              "cost_center": "CC-2001",
+              "cost_center_name": "Sales Nordics",
+              "gl_account": "6120",
+              "project_code": null,
+              "percentage": "40.00",
+              "amount": "2112.54"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "invoice_id": 9,
+      "invoice_number": "INV-2024009",
+      "status": "submitted",
+      "currency": "USD",
+      "issue_date": "2026-06-17",
+      "due_date": "2026-07-17",
+      "total_amount": "23530.41",
+      "notes": null,
+      "created_at": "2026-09-04T09:48:26.918628",
+      "supplier": {
+        "supplier_code": "SUP-000048",
+        "name": "Simpson, Webb and Bauer",
+        "country": "Italy",
+        "country_code": "IT",
+        "tax_id": "IT755807903",
+        "address": {
+          "line1": "825 Jason Summit Suite 623",
+          "city": "South Cynthiaberg",
+          "postal_code": "03518",
+          "country_code": "IT"
+        }
+      },
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Safety helmets",
+          "quantity": 30,
+          "unit_price": "317.11",
+          "line_total": "9513.30",
+          "allocations": [
+            {
+              "cost_center": "CC-4100",
+              "cost_center_name": "Logistics",
+              "gl_account": "6210",
+              "project_code": "PRJ-75",
+              "percentage": "100.00",
+              "amount": "9513.30"
+            }
+          ]
+        },
+        {
+          "line_number": 2,
+          "description": "Cloud hosting services",
+          "quantity": 43,
+          "unit_price": "99.79",
+          "line_total": "4290.97",
+          "allocations": [
+            {
+              "cost_center": "CC-1002",
+              "cost_center_name": "R&D Helsinki",
+              "gl_account": "6420",
+              "project_code": null,
+              "percentage": "50.00",
+              "amount": "2145.48"
+            },
+            {
+              "cost_center": "CC-2210",
+              "cost_center_name": "Sales DACH",
+              "gl_account": "6420",
+              "project_code": "PRJ-27",
+              "percentage": "30.00",
+              "amount": "1287.29"
+            },
+            {
+              "cost_center": "CC-2210",
+              "cost_center_name": "Sales DACH",
+              "gl_account": "6420",
+              "project_code": "PRJ-55",
+              "percentage": "20.00",
+              "amount": "858.20"
+            }
+          ]
+        },
+        {
+          "line_number": 3,
+          "description": "Consulting hours",
+          "quantity": 6,
+          "unit_price": "491.34",
+          "line_total": "2948.04",
+          "allocations": [
+            {
+              "cost_center": "CC-3400",
+              "cost_center_name": "Facilities",
+              "gl_account": "6120",
+              "project_code": null,
+              "percentage": "50.00",
+              "amount": "1474.02"
+            },
+            {
+              "cost_center": "CC-4100",
+              "cost_center_name": "Logistics",
+              "gl_account": "6120",
+              "project_code": "PRJ-37",
+              "percentage": "30.00",
+              "amount": "884.41"
+            },
+            {
+              "cost_center": "CC-1002",
+              "cost_center_name": "R&D Helsinki",
+              "gl_account": "6120",
+              "project_code": "PRJ-69",
+              "percentage": "20.00",
+              "amount": "589.61"
+            }
+          ]
+        },
+        {
+          "line_number": 4,
+          "description": "Cloud hosting services",
+          "quantity": 46,
+          "unit_price": "147.35",
+          "line_total": "6778.10",
+          "allocations": [
+            {
+              "cost_center": "CC-3010",
+              "cost_center_name": "IT Shared Services",
+              "gl_account": "6420",
+              "project_code": "PRJ-86",
+              "percentage": "70.00",
+              "amount": "4744.67"
+            },
+            {
+              "cost_center": "CC-1040",
+              "cost_center_name": "R&D Stuttgart",
+              "gl_account": "6420",
+              "project_code": "PRJ-34",
+              "percentage": "30.00",
+              "amount": "2033.43"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "invoice_id": 10,
+      "invoice_number": "INV-2024010",
+      "status": "paid",
+      "currency": "USD",
+      "issue_date": "2025-10-14",
+      "due_date": "2025-11-13",
+      "total_amount": "396.00",
+      "notes": null,
+      "created_at": "2026-09-04T09:48:26.938063",
+      "supplier": {
+        "supplier_code": "SUP-000005",
+        "name": "Gutierrez and Sons",
+        "country": "Sweden",
+        "country_code": "SE",
+        "tax_id": "SE521140492",
+        "address": {
+          "line1": "306 Collins Hills",
+          "city": "New William",
+          "postal_code": "51701",
+          "country_code": "SE"
+        }
+      },
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Office chairs",
+          "quantity": 3,
+          "unit_price": "132.00",
+          "line_total": "396.00",
+          "allocations": [
+            {
+              "cost_center": "CC-1002",
+              "cost_center_name": "R&D Helsinki",
+              "gl_account": "6300",
+              "project_code": null,
+              "percentage": "100.00",
+              "amount": "396.00"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "page": {
+    "page_size": 10,
+    "returned": 10,
+    "cursor": null,
+    "next_cursor": "eyJsYXN0X2lkIjoxMH0",
+    "has_more": true,
+    "estimated_total": 613
+  },
+  "meta": {
+    "request_id": "req_0ddd99e1",
+    "generated_at": "2026-09-04T10:03:16.428340Z",
+    "elapsed_ms": 4,
+    "filters_applied": 0,
+    "included": [
+      "supplier",
+      "line_items",
+      "allocations"
+    ]
+  }
+}

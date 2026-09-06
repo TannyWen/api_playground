@@ -1,0 +1,7 @@
+# Participant-side dependencies, for the Python work in VS Code.
+# Deliberately NOT in requirements.txt: the server never imports pandas, and
+# keeping it out means the Azure App Service build stays small and fast.
+#
+#   pip install -r requirements-training.txt
+requests==2.32.3
+pandas==2.2.3

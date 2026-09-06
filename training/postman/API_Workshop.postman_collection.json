@@ -1,0 +1,1407 @@
+{
+  "info": {
+    "_postman_id": "b7e4c1a2-9f3d-4a6b-8c21-workshopapi001",
+    "name": "API Workshop - Procurement Invoices",
+    "description": "Hands-on API workshop: connection, data structure, pagination,\nflattening, and error handling.\n\nGETTING STARTED\n1. Pick the 'Workshop API (local)' environment, top right.\n2. Open folder 1 and run C1.\n3. That is it -- the bearer token is fetched automatically and\n   refreshed when it expires. You never paste a token by hand.\n\nRequests whose names say '-> 422' or '-> 503' are SUPPOSED to fail.\nTheir descriptions explain what to look for.\n\nEvery request has a description. Read them: they are the workbook.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Fetches a bearer token automatically, so every request just works after",
+          "// import. Skips itself for the token endpoint, and reuses a token that is",
+          "// still valid for at least another minute.",
+          "const path = String(pm.request.url.getPath() || '');",
+          "const isTokenCall = path.indexOf('/auth/token') !== -1;",
+          "const token = pm.environment.get('token');",
+          "const expiresAt = pm.environment.get('token_expires_at');",
+          "",
+          "let stillValid = false;",
+          "if (token && expiresAt) {",
+          "    stillValid = (new Date(expiresAt).getTime() - Date.now()) > 60000;",
+          "}",
+          "",
+          "if (!isTokenCall && !stillValid) {",
+          "    const base = pm.environment.get('base_url');",
+          "    pm.sendRequest({",
+          "        url: base + '/v1/auth/token',",
+          "        method: 'POST',",
+          "        header: { 'Content-Type': 'application/x-www-form-urlencoded' },",
+          "        body: {",
+          "            mode: 'urlencoded',",
+          "            urlencoded: [",
+          "                { key: 'username', value: pm.environment.get('username') },",
+          "                { key: 'password', value: pm.environment.get('password') }",
+          "            ]",
+          "        }",
+          "    }, function (err, res) {",
+          "        if (err) {",
+          "            console.error('Auto-login failed:', err);",
+          "            return;",
+          "        }",
+          "        if (res.code !== 200) {",
+          "            console.error('Auto-login got HTTP ' + res.code + ': ' + res.text());",
+          "            return;",
+          "        }",
+          "        const body = res.json();",
+          "        pm.environment.set('token', body.access_token);",
+          "        pm.environment.set('token_expires_at', body.expires_at);",
+          "        console.log('Token refreshed, expires ' + body.expires_at);",
+          "    });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Connection (C1-C3)",
+      "description": "Reach the API, get a token, then prove the token works. Do these in order.",
+      "item": [
+        {
+          "name": "C1  GET /v1/ping  (no auth)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/ping",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "ping"
+              ]
+            },
+            "description": "Is the API reachable at all? No token needed.\n\nIf this fails, it is a network problem, not an auth problem:\n  - wrong host or port\n  - http:// vs https://\n  - a proxy or VPN in the way\n  - on Azure, a 20-30s cold start on the very first call",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('reports ok', function () {",
+                  "    pm.expect(pm.response.json().status).to.eql('ok');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "C2a  POST /v1/auth/token  with JSON  -> 422 (expected failure)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/auth/token",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "token"
+              ]
+            },
+            "description": "This SHOULD fail with 422. It is here on purpose.\n\nThe endpoint expects form-encoded fields, not JSON. Read the\nerror body: it tells you username and password are missing --\nbecause the server never looked in the JSON body for them.\n\nNow compare with C2b.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 422', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "pm.test('complains the fields are missing', function () {",
+                  "    pm.expect(pm.response.text()).to.include('username');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "C2b  POST /v1/auth/token  form-encoded  -> 200",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/auth/token",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "token"
+              ]
+            },
+            "description": "The same credentials, sent as x-www-form-urlencoded. This works.\n\nThe token is saved to the environment automatically, so every\nother request in this collection can use it.",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "username",
+                  "value": "{{username}}"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('returns a bearer token', function () {",
+                  "    pm.expect(body).to.have.property('access_token');",
+                  "});",
+                  "pm.environment.set('token', body.access_token);",
+                  "pm.environment.set('token_expires_at', body.expires_at);",
+                  "console.log('Token saved. Expires ' + body.expires_at);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "C3a  GET /v1/whoami  no header  -> 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/whoami",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "whoami"
+              ]
+            },
+            "description": "No Authorization header at all -> 403 Forbidden.\n\nCompare with C3b, which sends a *bad* token and gets 401.\nTwo different codes for two different situations:\n  403 = you did not present credentials\n  401 = you presented credentials and they were rejected\n\nMany people expect these the other way around. Worth a think.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "C3b  GET /v1/whoami  bad token  -> 401",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer this-is-not-a-real-token"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/whoami",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "whoami"
+              ]
+            },
+            "description": "A syntactically fine but invalid token -> 401 Unauthorized.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 401', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "C3c  GET /v1/whoami  valid token  -> 200",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/whoami",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "whoami"
+              ]
+            },
+            "description": "Who am I, and when does my token expire?\n\ntoken_expires_in_seconds is the useful one: if requests suddenly\nstart returning 401 mid-session, check here first."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('token has time left', function () {",
+                  "    pm.expect(body.token_expires_in_seconds).to.be.above(0);",
+                  "});",
+                  "console.log('Logged in as ' + body.username +",
+                  "    ', token valid for ' + Math.round(body.token_expires_in_seconds / 60) + ' min');",
+                  "console.log('Rate limit remaining: ' +",
+                  "    pm.response.headers.get('x-ratelimit-remaining'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Data structure (D1-D3)",
+      "description": "Work out the shape of the data before you write any code against it.",
+      "item": [
+        {
+          "name": "D1  GET /openapi.json  (the machine-readable contract)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/openapi.json",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "openapi.json"
+              ]
+            },
+            "description": "The full API contract as JSON. Every field, every type.\n\nFind the InvoiceOut schema and list its fields with their types.\nThe human-friendly version of this is at {{base_url}}/docs",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "D2  GET /v1/invoices/{number}  one fully nested invoice",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/invoices/{{sample_invoice}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "invoices",
+                "{{sample_invoice}}"
+              ]
+            },
+            "description": "One invoice, fully expanded. This is the shape you will flatten.\n\nMap the nesting and mark the cardinality of each level:\n  invoice -> line_items[] -> allocations[]\n  invoice -> supplier -> address\n\nHow many rows would a fully exploded flat table have for THIS\none invoice? (lines x allocations per line)"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const inv = pm.response.json();",
+                  "const lines = inv.line_items || [];",
+                  "const allocs = lines.reduce((n, li) => n + (li.allocations || []).length, 0);",
+                  "console.log(inv.invoice_number + ': ' + lines.length + ' lines, ' +",
+                  "    allocs + ' allocations -> ' + allocs + ' rows when fully exploded');",
+                  "pm.test('total_amount is a STRING, not a number', function () {",
+                  "    pm.expect(inv.total_amount).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "D3  POST /v1/invoices/search  page_size=1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/invoices/search",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "invoices",
+                "search"
+              ]
+            },
+            "description": "The same nesting, but wrapped in a paginated envelope.\n\nNote the three top-level keys: data, page, meta.\nThe rows are in `data` -- not at the top level.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"page_size\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "D3b  GET /suppliers?country=FI  (legacy)  -> 0 rows",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/suppliers?country=FI&limit=5",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "suppliers"
+              ],
+              "query": [
+                {
+                  "key": "country",
+                  "value": "FI"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "Returns an empty list. Why?\n\nThe legacy endpoint stores the country as a full name\n('Finland'), not an ISO-2 code. Try ?country=Finland instead.\nThen look at /v1/master-data/suppliers?country_code=FI, which\ndoes what you first expected.\n\nA real lesson: two representations of the same field is how\ndata contracts quietly break."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "console.log('rows returned: ' + body.items.length +",
+                  "    ' (an empty result is not an error)');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Pagination (P1-P2)",
+      "description": "Two different pagination styles, one per endpoint -- because you will meet both in the wild.\n\nMaster data uses limit/offset. Invoice search uses cursors.",
+      "item": [
+        {
+          "name": "P1a  master-data  limit=5  offset=0",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/master-data/suppliers?limit=5&offset=0",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "master-data",
+                "suppliers"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "5"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "Offset pagination. Look at the `page` object:\n  total       how many there are altogether\n  has_more    is there another page\n  next_offset the offset to ask for next (null on the last page)\n\nBefore running P1b: what will has_more be? Predict, then check."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const p = pm.response.json().page;",
+                  "console.log('total=' + p.total + ' returned=' + p.returned +",
+                  "    ' has_more=' + p.has_more + ' next_offset=' + p.next_offset);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P1b  master-data  limit=5  offset=5",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/master-data/suppliers?limit=5&offset=5",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "master-data",
+                "suppliers"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "5"
+                },
+                {
+                  "key": "offset",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "Page 2. Same total, different rows."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P1c  master-data  offset past the end  -> 200 with []",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/master-data/suppliers?limit=5&offset=99999",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "master-data",
+                "suppliers"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "5"
+                },
+                {
+                  "key": "offset",
+                  "value": "99999"
+                }
+              ]
+            },
+            "description": "Asking beyond the last row is NOT an error. You get 200 with an\nempty items array and has_more=false.\n\n'No results' and 'something went wrong' are different things, and\nyour extraction code has to tell them apart."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200, not 404', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('items is empty', function () {",
+                  "    pm.expect(pm.response.json().items).to.be.an('array').that.is.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P1d  master-data  limit=999  -> 422",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/master-data/suppliers?limit=999",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "master-data",
+                "suppliers"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "999"
+                }
+              ]
+            },
+            "description": "There is a hard cap on page size. Asking for more is rejected.\n\nRead the cap out of the error body rather than the docs -- that is\nwhat you would have to do against a real vendor API."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 422', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P2a  search  page 1  (saves next_cursor)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/invoices/search",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "invoices",
+                "search"
+              ]
+            },
+            "description": "Cursor pagination. Note what `page` does and does not contain:\n  next_cursor      an opaque token for the next page\n  estimated_total  present on page 1 ONLY\n\nThere is no page count. Run P2b to see why that matters.\n\nThe cursor is saved to {{next_cursor}} for you.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"page_size\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const p = pm.response.json().page;",
+                  "pm.environment.set('next_cursor', p.next_cursor);",
+                  "console.log('estimated_total=' + p.estimated_total);",
+                  "console.log('next_cursor=' + p.next_cursor);",
+                  "console.log('(decode it: it is just base64 JSON)');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P2b  search  page 2  via next_cursor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/invoices/search",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "invoices",
+                "search"
+              ]
+            },
+            "description": "Page 2, using the cursor P2a saved.\n\nLook at estimated_total now. It is null.\n\nSo you cannot compute 'total / page_size' to know when to stop.\nThe only correct rule is: keep going until next_cursor is null.\nThat is deliberate -- it is how most real cursor APIs behave.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"page_size\": 10,\n  \"cursor\": \"{{next_cursor}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const p = pm.response.json().page;",
+                  "pm.test('estimated_total is null on page 2', function () {",
+                  "    pm.expect(p.estimated_total).to.be.null;",
+                  "});",
+                  "pm.environment.set('next_cursor', p.next_cursor);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P2c  search  broken cursor  -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/invoices/search",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "invoices",
+                "search"
+              ]
+            },
+            "description": "A malformed cursor gives 400, not 422.\n\nThe difference: 422 means the request was the wrong SHAPE.\n400 here means the shape was fine but the VALUE was meaningless.\nWorth distinguishing when you are writing error handling.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"page_size\": 10,\n  \"cursor\": \"not-a-real-cursor\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Flatten to files (F1-F3)",
+      "description": "Save these two responses to disk, then switch to VS Code.\n\nIn Postman: Send, then the Save Response dropdown (top right of the\nresponse pane) -> Save to a file. Put them in training/data/.\n\nPre-saved copies are already in training/data/samples/ if you would\nrather not wait.",
+      "item": [
+        {
+          "name": "F1  master-data  limit=10   -> save as master_data_page1.json",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/master-data/suppliers?limit=10",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "master-data",
+                "suppliers"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Save this response to training/data/master_data_page1.json\n\nThen flatten it to one row per supplier. Watch what happens to\nthe nested `address` object versus the `contacts` array -- they\ndo not flatten the same way, and that difference is the point."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "F2/F3  search  page_size=10  -> save as invoices_page1.json",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/invoices/search",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "invoices",
+                "search"
+              ]
+            },
+            "description": "Save this response to training/data/invoices_page1.json\n\nThen produce, in Python:\n  F2  one row per line item   (carry the invoice header down)\n  F3  one row per allocation  (carry invoice AND line down)\n\nThen reconcile: per line, the allocation amounts must sum to\nexactly that line's line_total. It does balance -- if yours\ndoesn't, look at the dtype of your money column.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"page_size\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const rows = pm.response.json().data;",
+                  "const lines = rows.reduce((n, i) => n + (i.line_items || []).length, 0);",
+                  "const allocs = rows.reduce((n, i) => n +",
+                  "    (i.line_items || []).reduce((m, li) => m + (li.allocations || []).length, 0), 0);",
+                  "console.log('This response holds: ' + rows.length + ' invoices, ' +",
+                  "    lines + ' line items, ' + allocs + ' allocations');",
+                  "console.log('So your three flat files should have exactly those row counts.');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Error handling (E1-E3)",
+      "description": "Every one of these fails on purpose. Read the bodies carefully.",
+      "item": [
+        {
+          "name": "E1a  three validation errors at once  -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/invoices/search",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "invoices",
+                "search"
+              ]
+            },
+            "description": "page_size is 0, currency has four letters, and min > max.\n\nThe response names every offending field, with a dotted path.\nFix all three from the error body alone, without reading source.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"page_size\": 0,\n  \"filters\": {\n    \"currency\": \"EURO\",\n    \"min_total\": \"5000.00\",\n    \"max_total\": \"100.00\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 422', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "const err = pm.response.json().error;",
+                  "console.log('code       : ' + err.code);",
+                  "console.log('request_id : ' + err.request_id);",
+                  "console.log('retryable  : ' + err.retryable);",
+                  "(err.details || []).forEach(function (d) {",
+                  "    console.log('  field ' + d.field + ' -> ' + d.issue);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E1b  right parameter, wrong level  -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/invoices/search",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "invoices",
+                "search"
+              ]
+            },
+            "description": "`limit` is not a thing here, and it is not silently ignored\neither -- the error names the key it did not expect.\n\nThis is the single most common real mistake against a new API:\na valid-looking parameter at the wrong nesting level.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"limit\": 25\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 422', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E1c  /v1 404  (structured envelope)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/invoices/INV-does-not-exist",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "invoices",
+                "INV-does-not-exist"
+              ]
+            },
+            "description": "A /v1 404. Note the code, the request_id, and retryable=false."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E1d  legacy 404  (bare detail)  -- compare with E1c",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/invoices/999999",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "invoices",
+                "999999"
+              ]
+            },
+            "description": "The same class of error on the original API surface.\n\nAll you get is {\"detail\": \"...\"}. No error code to branch on,\nno request_id to quote in a support ticket, no machine-readable\nfield list.\n\nName three things E1c gives a caller that this does not."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E2a  flaky endpoint  (run it 4-5 times)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/unstable/invoices?page_size=1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "unstable",
+                "invoices"
+              ],
+              "query": [
+                {
+                  "key": "page_size",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Fails roughly every third call, per user, with 503 +\nRetry-After: 2.\n\n503 not 500, deliberately: this is transient and retrying is the\nright response. Hit Send a few times and watch it alternate.\n\nThen write the retry loop in Python (starter 03)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const s = pm.response.code;",
+                  "if (s === 200) {",
+                  "    console.log('200 OK');",
+                  "} else {",
+                  "    console.log(s + ' - Retry-After: ' +",
+                  "        pm.response.headers.get('retry-after') + 's');",
+                  "}",
+                  "pm.test('either 200 or a retryable 503', function () {",
+                  "    pm.expect([200, 503]).to.include(s);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E2b  force a failure with X-Chaos  -> 503",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Chaos",
+                "value": "fail"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/unstable/invoices?page_size=1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "unstable",
+                "invoices"
+              ],
+              "query": [
+                {
+                  "key": "page_size",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "The X-Chaos header forces the outcome, so you can test your\nretry logic against a guaranteed failure instead of waiting for\na random one. Change it to `pass` to force success."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 503', function () {",
+                  "    pm.response.to.have.status(503);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E3  throttled endpoint  (Send repeatedly -> 429)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/unstable/throttled-invoices?page_size=1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "unstable",
+                "throttled-invoices"
+              ],
+              "query": [
+                {
+                  "key": "page_size",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "A deliberately tight budget: a handful of calls per 30 seconds.\n\nKeep hitting Send until you get 429, then look at Retry-After.\nThe server is telling you exactly how long to wait -- a good\nclient reads that rather than guessing.\n\nAlso note x-ratelimit-remaining on the successful responses: you\ncan see it coming and slow down before being blocked."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const s = pm.response.code;",
+                  "console.log('status ' + s +",
+                  "    ' | remaining=' + pm.response.headers.get('x-ratelimit-remaining') +",
+                  "    ' | reset=' + pm.response.headers.get('x-ratelimit-reset') + 's');",
+                  "if (s === 429) {",
+                  "    console.log('Throttled. Retry-After: ' +",
+                  "        pm.response.headers.get('retry-after') + 's');",
+                  "}",
+                  "pm.test('either 200 or a retryable 429', function () {",
+                  "    pm.expect([200, 429]).to.include(s);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. The original API (bonus)",
+      "description": "The unversioned endpoints this API started as. Kept for comparison:\nthinner payloads, offset-only paging, and bare `detail` errors.\n\nCareful: the write endpoints here affect everyone, since you all share\none database.",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /suppliers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/suppliers?limit=5",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "suppliers"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /invoices",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/invoices?limit=5",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "invoices"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /stats/summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/stats/summary",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stats",
+                "summary"
+              ]
+            },
+            "description": "Totals and counts by status. Useful as an independent check on\nyour extraction: total_invoices here should match how many rows\nyour drain loop collected."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const b = pm.response.json();",
+                  "console.log('invoices=' + b.total_invoices +",
+                  "    ' suppliers=' + b.total_suppliers +",
+                  "    ' total_amount=' + b.total_amount);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /stats/top-suppliers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/stats/top-suppliers?limit=5",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "stats",
+                "top-suppliers"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

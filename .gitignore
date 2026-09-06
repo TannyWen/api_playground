@@ -1,0 +1,19 @@
+# Database (recreate with: python manage.py seed --fresh)
+*.db
+procurement.db
+
+# Generated credentials -- never commit these
+training/credentials.*
+
+# Participant scratch space, but keep the pre-saved samples
+training/data/*
+!training/data/.gitkeep
+!training/data/samples/
+!training/data/samples/*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.coverage

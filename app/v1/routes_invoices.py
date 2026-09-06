@@ -1,0 +1,179 @@
+"""Invoice extraction: POST because the filter belongs in the body.
+
+This is the GET-vs-POST lesson made concrete. A realistic extraction filter --
+a list of statuses, a date range, dozens of supplier codes -- does not fit
+comfortably or safely in a URL. So the parameters move into the body, and the
+request stays a read: it returns 200, creates nothing, and can be repeated.
+
+Pagination is keyset (WHERE id > last_id ORDER BY id) rather than offset, and
+the response deliberately omits a total, so the only correct way to extract
+everything is to follow next_cursor until it comes back null.
+"""
+import time
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, Path, Request
+from sqlalchemy.orm import Session, joinedload
+
+from app import models
+from app.database import get_db
+from app.v1 import projections, schemas
+from app.v1.cursor import InvalidCursor, decode_cursor, encode_cursor
+from app.v1.deps import current_user
+from app.v1.errors import ApiError
+from app.v1.middleware import get_request_id
+
+router = APIRouter(prefix="/invoices", tags=["v1: invoices"])
+
+
+def _base_query(db: Session):
+    return db.query(models.Invoice).options(
+        joinedload(models.Invoice.supplier).joinedload(models.Supplier.profile),
+        joinedload(models.Invoice.line_items).joinedload(
+            models.InvoiceLineItem.allocations
+        ),
+    )
+
+
+def _apply_filters(q, f: schemas.InvoiceFilters, db: Session):
+    applied = 0
+    if f.status:
+        q = q.filter(models.Invoice.status.in_(f.status))
+        applied += 1
+    if f.supplier_codes:
+        supplier_ids = [
+            sid
+            for (sid,) in db.query(models.SupplierProfile.supplier_id).filter(
+                models.SupplierProfile.supplier_code.in_(f.supplier_codes)
+            )
+        ]
+        # An unmatched code yields an empty page rather than an error: "no rows"
+        # is a legitimate answer, and telling the two apart is a workshop point.
+        q = q.filter(models.Invoice.supplier_id.in_(supplier_ids or [-1]))
+        applied += 1
+    if f.issued_from:
+        q = q.filter(models.Invoice.issue_date >= f.issued_from)
+        applied += 1
+    if f.issued_to:
+        q = q.filter(models.Invoice.issue_date <= f.issued_to)
+        applied += 1
+    if f.min_total is not None:
+        q = q.filter(models.Invoice.total_amount >= f.min_total)
+        applied += 1
+    if f.max_total is not None:
+        q = q.filter(models.Invoice.total_amount <= f.max_total)
+        applied += 1
+    if f.currency:
+        q = q.filter(models.Invoice.currency == f.currency)
+        applied += 1
+    return q, applied
+
+
+def execute_search(
+    payload: schemas.InvoiceSearchRequest, request: Request, db: Session
+) -> schemas.InvoiceSearchResponse:
+    """The search itself, independent of routing.
+
+    Shared with the /v1/unstable/* lab routes so the retry exercises return the
+    exact same payload shape as the real endpoint.
+    """
+    started = time.perf_counter()
+
+    if payload.cursor:
+        try:
+            last_id = decode_cursor(payload.cursor)
+        except InvalidCursor as exc:
+            # 400, not 422: the value is well-typed, its *content* is wrong.
+            raise ApiError(
+                400,
+                str(exc),
+                code="invalid_cursor",
+                details=[{"field": "cursor", "issue": "undecodable"}],
+            ) from exc
+    else:
+        last_id = None
+
+    q, filters_applied = _apply_filters(_base_query(db), payload.filters, db)
+
+    # Only the first page carries a count, and it is named "estimated" so nobody
+    # builds a contract on it. From page 2 it is null, which removes the shortcut
+    # of computing a page count and forces a genuine drain loop.
+    estimated_total = q.count() if last_id is None else None
+
+    if last_id is not None:
+        q = q.filter(models.Invoice.id > last_id)
+
+    # Fetch one extra row to learn whether another page exists, without a
+    # second COUNT query.
+    rows = q.order_by(models.Invoice.id).limit(payload.page_size + 1).all()
+    has_more = len(rows) > payload.page_size
+    rows = rows[: payload.page_size]
+
+    inc = payload.include
+    data = [
+        projections.invoice_to_out(
+            inv,
+            include_supplier=inc.supplier,
+            include_line_items=inc.line_items,
+            include_allocations=inc.allocations,
+        )
+        for inv in rows
+    ]
+
+    return schemas.InvoiceSearchResponse(
+        data=data,
+        page=schemas.CursorPage(
+            page_size=payload.page_size,
+            returned=len(rows),
+            cursor=payload.cursor,
+            next_cursor=encode_cursor(rows[-1].id) if (rows and has_more) else None,
+            has_more=has_more,
+            estimated_total=estimated_total,
+        ),
+        meta=schemas.SearchMeta(
+            request_id=get_request_id(request),
+            generated_at=datetime.now(timezone.utc),
+            elapsed_ms=int((time.perf_counter() - started) * 1000),
+            filters_applied=filters_applied,
+            included=[k for k, v in inc.model_dump().items() if v],
+        ),
+    )
+
+
+@router.post("/search", response_model=schemas.InvoiceSearchResponse)
+def search_invoices(
+    payload: schemas.InvoiceSearchRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    _: models.User = Depends(current_user),
+):
+    return execute_search(payload, request, db)
+
+
+@router.get("/{invoice_number}", response_model=schemas.InvoiceOut)
+def get_invoice(
+    invoice_number: str = Path(
+        ...,
+        description="The business key, e.g. INV-2024041 -- not the surrogate id.",
+    ),
+    db: Session = Depends(get_db),
+    _: models.User = Depends(current_user),
+):
+    """One fully-expanded invoice, addressed by its business key.
+
+    Addressing by invoice_number rather than id is deliberate: it is the key a
+    finance person would actually quote, and it contrasts with the legacy
+    /invoices/{id} route.
+    """
+    invoice = (
+        _base_query(db)
+        .filter(models.Invoice.invoice_number == invoice_number)
+        .first()
+    )
+    if not invoice:
+        raise ApiError(
+            404,
+            f"No invoice with number '{invoice_number}'.",
+            details=[{"field": "invoice_number", "issue": "not_found"}],
+        )
+    return projections.invoice_to_out(invoice)
