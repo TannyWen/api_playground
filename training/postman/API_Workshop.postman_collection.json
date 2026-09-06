@@ -453,16 +453,18 @@
           ]
         },
         {
-          "name": "D3b  GET /suppliers?country=FI  (legacy)  -> 0 rows",
+          "name": "D3b  master-data  country=FI  -> 0 rows (the trap)",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/suppliers?country=FI&limit=5",
+              "raw": "{{base_url}}/v1/master-data/suppliers?country=FI&limit=5",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
+                "v1",
+                "master-data",
                 "suppliers"
               ],
               "query": [
@@ -476,7 +478,7 @@
                 }
               ]
             },
-            "description": "Returns an empty list. Why?\n\nThe legacy endpoint stores the country as a full name\n('Finland'), not an ISO-2 code. Try ?country=Finland instead.\nThen look at /v1/master-data/suppliers?country_code=FI, which\ndoes what you first expected.\n\nA real lesson: two representations of the same field is how\ndata contracts quietly break."
+            "description": "Returns an empty list. Why?\n\n`country` filters on the full name ('Finland'); `country_code`\nfilters on the ISO-2 code ('FI'). This request uses the wrong\none on purpose.\n\nRe-send with country_code=FI instead (or country=Finland) and\nyou get real rows.\n\nA real lesson: two representations of the same field, on the\nsame endpoint, is how data contracts quietly break."
           },
           "event": [
             {
@@ -489,7 +491,7 @@
                   "});",
                   "const body = pm.response.json();",
                   "console.log('rows returned: ' + body.items.length +",
-                  "    ' (an empty result is not an error)');"
+                  "    ' (an empty result is not an error -- try country_code=FI instead)');"
                 ]
               }
             }
@@ -1054,37 +1056,6 @@
           ]
         },
         {
-          "name": "E1d  legacy 404  (bare detail)  -- compare with E1c",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/invoices/999999",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "invoices",
-                "999999"
-              ]
-            },
-            "description": "The same class of error on the original API surface.\n\nAll you get is {\"detail\": \"...\"}. No error code to branch on,\nno request_id to quote in a support ticket, no machine-readable\nfield list.\n\nName three things E1c gives a caller that this does not."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 404', function () {",
-                  "    pm.response.to.have.status(404);",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
           "name": "E2a  flaky endpoint  (run it 4-5 times)",
           "request": {
             "method": "GET",
@@ -1212,189 +1183,6 @@
                   "}",
                   "pm.test('either 200 or a retryable 429', function () {",
                   "    pm.expect([200, 429]).to.include(s);",
-                  "});"
-                ]
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "6. The original API (bonus)",
-      "description": "The unversioned endpoints this API started as. Kept for comparison:\nthinner payloads, offset-only paging, and bare `detail` errors.\n\nCareful: the write endpoints here affect everyone, since you all share\none database.",
-      "item": [
-        {
-          "name": "GET /health",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/health",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "health"
-              ]
-            },
-            "description": "",
-            "auth": {
-              "type": "noauth"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "GET /suppliers",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/suppliers?limit=5",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "suppliers"
-              ],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "5"
-                }
-              ]
-            },
-            "description": ""
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "GET /invoices",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/invoices?limit=5",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "invoices"
-              ],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "5"
-                }
-              ]
-            },
-            "description": ""
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "GET /stats/summary",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/stats/summary",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "stats",
-                "summary"
-              ]
-            },
-            "description": "Totals and counts by status. Useful as an independent check on\nyour extraction: total_invoices here should match how many rows\nyour drain loop collected."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "const b = pm.response.json();",
-                  "console.log('invoices=' + b.total_invoices +",
-                  "    ' suppliers=' + b.total_suppliers +",
-                  "    ' total_amount=' + b.total_amount);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "GET /stats/top-suppliers",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/stats/top-suppliers?limit=5",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "stats",
-                "top-suppliers"
-              ],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "5"
-                }
-              ]
-            },
-            "description": ""
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 200', function () {",
-                  "    pm.response.to.have.status(200);",
                   "});"
                 ]
               }

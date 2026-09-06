@@ -239,10 +239,6 @@ python training/starters/01_pagination.py
 - Stop when `next_cursor` is `None`. Not when a page looks short — the last full page looks identical to a middle one.
 - Don't divide `estimated_total` by `page_size`. You saw why in P2b.
 
-**Cross-check:** run the legacy `GET /stats/summary` (folder 6). Its
-`total_invoices` should match your count. If it doesn't, someone deleted an
-invoice — which is its own lesson about extracting from live systems.
-
 ---
 
 ## 4. Flatten to files · 14:05–14:35
@@ -332,7 +328,7 @@ a script that ran once from one you'd schedule.*
 Open **`training/starters/03_error_handling.py`**. One broken request is already
 written for you.
 
-Run it, then work through TODOs 1–3. Use Postman folder **5** to trigger each
+Run it, then work through TODOs 1–2. Use Postman folder **5** to trigger each
 one interactively if that's easier.
 
 Build this table:
@@ -353,16 +349,12 @@ from the error body.
 find *your* failed call in their logs. Quote it in the ticket and you get a real
 answer; describe the error in prose and you get twenty questions.
 
-**Then run E1d** and compare it with E1c. Same class of error, two API
-generations. **Name three things the newer one gives a caller that the older one
-doesn't.**
-
 ### E2 — Retry what's worth retrying
 
 `GET /v1/unstable/invoices` fails roughly every third call, on purpose, with
 `503` and a `Retry-After` header.
 
-TODO 4: write a retry loop that succeeds anyway.
+TODO 3: write a retry loop that succeeds anyway.
 
 Three things to get right:
 - Wait longer between attempts each time (0.25s, 0.5s, 1s, 2s…) rather than hammering
@@ -378,7 +370,7 @@ Your loop from E2 will happily retry *anything*. That's wrong.
 A `422` means your request is malformed. Waiting and sending the identical
 request again will fail identically — five times, slowly.
 
-TODO 5: write
+TODO 4: write
 
 ```python
 def should_retry(status: int) -> bool:
@@ -438,9 +430,6 @@ join-clean CSVs.
 
 **E4** Hit `/v1/unstable/throttled-invoices` until you get `429`, then make your
 client honour `Retry-After` exactly.
-
-**E5** Trigger a `409 Conflict`. (Hint: `invoice_number` is unique, and the
-legacy API lets you create invoices.)
 
 ---
 

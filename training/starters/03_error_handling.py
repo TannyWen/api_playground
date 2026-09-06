@@ -52,10 +52,6 @@ print(f"  body  : {bad.text[:400]}\n")
 #           - an invoice number that doesn't exist on /v1/invoices/{number}
 #         Two of those are about authentication and they return DIFFERENT codes.
 #         Which is which, and does the difference make sense to you?
-#
-# TODO 3: Compare against a legacy endpoint: GET /invoices/999999
-#         What does its error body give you that the /v1 one doesn't -- and
-#         what does it NOT give you?
 
 
 # ---------------------------------------------------------------------------
@@ -75,7 +71,7 @@ for i in range(4):
           (f"  Retry-After: {r.headers.get('retry-after')}" if not r.ok else ""))
 print()
 
-# TODO 4: Write a function that fetches this endpoint and RETRIES on failure,
+# TODO 3: Write a function that fetches this endpoint and RETRIES on failure,
 #         so it succeeds even though the endpoint keeps breaking.
 #
 #         Make the wait grow between attempts (0.25s, 0.5s, 1s, 2s...) rather
@@ -95,7 +91,7 @@ def fetch_with_retry(max_attempts=5):
 # ---------------------------------------------------------------------------
 # E3 -- don't retry what can never succeed
 # ---------------------------------------------------------------------------
-# TODO 5: Your retry loop above will happily retry ANY failure. That is wrong.
+# TODO 4: Your retry loop above will happily retry ANY failure. That is wrong.
 #         A 422 means your request is malformed -- waiting and sending the
 #         identical request again will fail identically, five times, slowly.
 #

@@ -25,6 +25,12 @@ FromAttrs = ConfigDict(from_attributes=True)
 # ---------------------------------------------------------------------------
 # Connection / meta
 # ---------------------------------------------------------------------------
+class TokenOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_at: datetime
+
+
 class PingOut(BaseModel):
     status: str = "ok"
     api_version: str = config.API_VERSION
@@ -75,7 +81,7 @@ class ContactOut(BaseModel):
 class SupplierMasterOut(BaseModel):
     supplier_code: str
     name: str
-    # Both representations, on purpose: `country` is the legacy full name, while
+    # Both representations, on purpose: `country` is the full name, while
     # `country_code` is the ISO-2 code. Reconciling them is a workshop exercise.
     country: str
     country_code: str

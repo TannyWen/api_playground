@@ -318,14 +318,6 @@ def main():
     )
     record(e.get("retryable") is False, "422 is flagged as not retryable")
 
-    st, err, _ = call(base, "GET", "/invoices/999999", token=token)
-    legacy = err or {}
-    record(
-        st == 404 and "detail" in legacy and "error" not in legacy,
-        "legacy endpoints keep their bare `detail` error shape",
-        str(sorted(legacy))[:40],
-    )
-
     if not args.skip_slow:
         got429 = False
         retry_after = None

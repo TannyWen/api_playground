@@ -161,9 +161,8 @@ def get_invoice(
 ):
     """One fully-expanded invoice, addressed by its business key.
 
-    Addressing by invoice_number rather than id is deliberate: it is the key a
-    finance person would actually quote, and it contrasts with the legacy
-    /invoices/{id} route.
+    Addressing by invoice_number rather than a surrogate id is deliberate: it
+    is the key a finance person would actually quote.
     """
     invoice = (
         _base_query(db)

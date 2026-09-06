@@ -39,7 +39,6 @@ printed there.
 | 3. Pagination | Offset style and cursor style, side by side |
 | 4. Flatten to files | Save two responses to disk, then move to VS Code |
 | 5. Error handling | Every failure mode, deliberately triggered |
-| 6. The original API | The unversioned endpoints, for comparison |
 
 ## Switching to Azure
 

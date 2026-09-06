@@ -4,8 +4,7 @@ from fastapi import Request
 from app.auth import require_token
 from app.security import decode_access_token
 
-# Re-exported so routes read as `user: User = Depends(current_user)` -- and,
-# unlike the legacy routes, actually *use* the returned User.
+# Re-exported so routes read as `user: User = Depends(current_user)`.
 current_user = require_token
 
 

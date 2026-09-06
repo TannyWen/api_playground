@@ -1,8 +1,8 @@
 """Request-id plumbing.
 
-App-wide, but it only ever adds a response *header*, so legacy response bodies
-are untouched. Having the id on request.state means the id in a `meta` block and
-the id in an error envelope come from the same source.
+App-wide, but it only ever adds a response *header*, so no response body is
+touched. Having the id on request.state means the id in a `meta` block and the
+id in an error envelope come from the same source.
 """
 import secrets
 

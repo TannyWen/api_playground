@@ -14,7 +14,6 @@ from fastapi.security import HTTPAuthorizationCredentials, OAuth2PasswordRequest
 from sqlalchemy.orm import Session
 
 from app import models
-from app import schemas as legacy_schemas
 from app.auth import bearer_scheme
 from app.database import get_db
 from app.security import ALGORITHM, SECRET_KEY, create_access_token, verify_password
@@ -37,7 +36,7 @@ def ping():
     )
 
 
-@router.post("/auth/token", response_model=legacy_schemas.TokenOut)
+@router.post("/auth/token", response_model=schemas.TokenOut)
 def issue_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
@@ -46,8 +45,8 @@ def issue_token(
 
     Form-encoded, not JSON. That is not an oversight -- it mirrors the OAuth2
     password grant, and working out *why* a JSON body fails here is one of the
-    workshop's most useful ten minutes. Unlike the legacy endpoint, failures
-    arrive in the /v1 error envelope.
+    workshop's most useful ten minutes. Failures arrive in the /v1 error
+    envelope.
     """
     user = (
         db.query(models.User)
@@ -65,7 +64,7 @@ def issue_token(
         )
 
     token, expires_at = create_access_token(subject=user.username)
-    return legacy_schemas.TokenOut(access_token=token, expires_at=expires_at)
+    return schemas.TokenOut(access_token=token, expires_at=expires_at)
 
 
 @router.get("/whoami", response_model=schemas.WhoAmIOut)
@@ -78,8 +77,8 @@ def whoami(
 
     The expiry countdown turns the mid-session "everything suddenly returns 401"
     mystery into a two-second self-diagnosis. This is also the only route that
-    actually uses the User that require_token has always returned -- every
-    legacy route discards it.
+    actually uses the User that require_token returns -- every other route
+    discards it.
     """
     expires_at = expires_in = None
     try:

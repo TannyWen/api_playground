@@ -1,12 +1,12 @@
 """A single, structured error shape for the /v1 surface.
 
-The legacy surface returns bare {"detail": "..."}. /v1 returns an envelope,
-because "parse the error, log the request_id, decide whether to retry" is the
-skill the workshop is actually teaching.
+Bare {"detail": "..."} tells a caller almost nothing. This envelope carries a
+code, a request_id, and a retryable flag, because "parse the error, log the
+request_id, decide whether to retry" is the skill the workshop is teaching.
 
 Handlers are registered app-wide (FastAPI has no per-router exception handlers)
-but short-circuit to FastAPI's own handlers for any path outside /v1, so the 12
-legacy endpoints keep their exact current behaviour.
+but short-circuit to FastAPI's own handlers for any path outside /v1 -- which
+today means only FastAPI's own routes (/docs, /openapi.json, /redoc).
 """
 import logging
 
@@ -145,8 +145,9 @@ def install_v1_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception):
-        # Re-raise outside /v1 so legacy 500s still surface as real tracebacks
-        # (and so TestClient(raise_server_exceptions=True) keeps working).
+        # Re-raise outside /v1 so a 500 on a non-/v1 path (FastAPI's own routes)
+        # still surfaces as a real traceback (and so
+        # TestClient(raise_server_exceptions=True) keeps working).
         if not request.url.path.startswith(V1_PREFIX):
             raise exc
         log.exception("unhandled error", extra={"request_id": get_request_id(request)})

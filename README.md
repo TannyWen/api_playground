@@ -3,15 +3,10 @@
 A FastAPI + SQLite API modeling procurement invoices, built for teaching REST
 API concepts: bearer token auth, pagination, filtering, and error handling.
 
-Two surfaces live here:
-
-- **`/v1`** — a training surface for the API workshop (see
-  [`training/WORKBOOK.md`](training/WORKBOOK.md)): cursor and offset
-  pagination, a structured error envelope, rate limiting, and deliberately
-  injected failure.
-- **The original, unversioned endpoints** (`/health`, `/suppliers`,
-  `/invoices`, `/stats/*`) — kept as-is for comparison. They return bare
-  `{"detail": "..."}` errors and only offset pagination.
+Everything lives under **`/v1`** (see
+[`training/WORKBOOK.md`](training/WORKBOOK.md) for the workshop that runs
+against it): cursor and offset pagination, a structured error envelope, rate
+limiting, and deliberately injected failure.
 
 ## Setup
 
@@ -51,8 +46,8 @@ Docs: http://127.0.0.1:8000/docs
 
 ## Auth
 
-All endpoints except `/health`, `/v1/ping`, and the token endpoint require a
-bearer token, issued as a real JWT.
+All endpoints except `/v1/ping` and `/v1/auth/token` require a bearer token,
+issued as a real JWT.
 
 1. `python manage.py seed` creates two fixed accounts (`student` /
    `student-pass-123` and `instructor` / `instructor-pass-456`) for local
@@ -78,7 +73,7 @@ Tokens expire after 60 minutes by default (`ACCESS_TOKEN_EXPIRE_MINUTES` env
 var). The signing key is generated per-process unless `JWT_SECRET_KEY` is set,
 so **tokens stop validating across server restarts unless you pin it**.
 
-## `/v1` endpoints
+## Endpoints
 
 | Method | Path                              | Notes                                     |
 |--------|------------------------------------|--------------------------------------------|
@@ -91,28 +86,8 @@ so **tokens stop validating across server restarts unless you pin it**.
 | GET    | `/v1/unstable/invoices`            | Fails ~1 in 3 calls, on purpose.             |
 | GET    | `/v1/unstable/throttled-invoices`  | Deliberately tight rate limit.               |
 
-Errors on `/v1` return a structured envelope:
+Every response returns a structured error envelope on failure:
 `{"error": {"code", "message", "status", "request_id", "retryable", "details"}}`.
-
-## Original endpoints
-
-| Method | Path                              | Description                              |
-|--------|------------------------------------|-------------------------------------------|
-| GET    | /health                            | No auth. Liveness check.                  |
-| POST   | /auth/token                        | No auth. Exchange username/password for a JWT bearer token. |
-| GET    | /suppliers                         | Paginated list, filter by `country`.      |
-| GET    | /suppliers/{id}                    | Single supplier.                          |
-| GET    | /suppliers/{id}/invoices           | Paginated invoices for a supplier.        |
-| GET    | /invoices                          | Paginated list, filter by status/supplier/amount range. |
-| GET    | /invoices/{id}                     | Invoice detail with supplier + line items.|
-| POST   | /invoices                          | Create an invoice with line items.        |
-| PATCH  | /invoices/{id}/status              | Update invoice status.                    |
-| DELETE | /invoices/{id}                     | Delete an invoice.                        |
-| GET    | /stats/summary                     | Totals and counts grouped by status.      |
-| GET    | /stats/top-suppliers               | Top suppliers by invoice total.           |
-
-Pagination uses `limit`/`offset` query params and returns
-`{items, total, limit, offset, has_more}`.
 
 ## Workshop material
 

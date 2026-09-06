@@ -51,8 +51,10 @@ class ApiError(Exception):
     def from_response(cls, response: requests.Response) -> "ApiError":
         """Parse a /v1 error envelope, degrading gracefully if it isn't one.
 
-        The legacy endpoints return a bare {"detail": ...} with no code and no
-        request_id -- which is exactly the contrast challenge E1 asks about.
+        Every /v1 route uses this envelope, but a defensive client never
+        assumes the shape of a response it hasn't checked -- an unexpected
+        proxy error page or a route typo would otherwise crash the parser
+        instead of surfacing a readable message.
         """
         try:
             body = response.json()
@@ -69,7 +71,7 @@ class ApiError(Exception):
             )
         return cls(
             status=response.status_code,
-            code="legacy_error",
+            code="unstructured_error",
             message=str(body.get("detail", response.text[:200])),
             request_id=response.headers.get("x-request-id"),
         )
@@ -160,13 +162,7 @@ def main() -> None:
         print(f"    offending fields: {[d.get('field') for d in e.details]}")
         if e.request_id is None:
             failures.append("E1: envelope carried no request_id")
-
-    # The same class of error on a legacy endpoint, for contrast.
-    r = session.get(f"{BASE_URL}/invoices/999999",
-                    headers={"Authorization": f"Bearer {token}"}, timeout=30)
-    legacy = ApiError.from_response(r)
-    print(f"    legacy endpoint by comparison: {legacy}")
-    print("    -> no code, no details, and a request_id only from the header\n")
+    print()
 
     # --- E2: retry transient failures ----------------------------------------
     print("E2  Retrying an endpoint that fails every third call")
