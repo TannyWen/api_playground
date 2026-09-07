@@ -49,6 +49,25 @@ Change the environment dropdown from **Workshop API (local)** to
 Two things to expect on Azure: the first call may take 20–30 seconds (cold
 start — just send it again), and the URL has **no port number**, unlike local.
 
+## Checking you're hitting the right deployment
+
+Run **C1 (`GET /v1/ping`)** and look at the response body:
+
+```json
+{
+  "app_version": "2.1.0",
+  "git_commit": null,
+  "process_started_at": "2026-09-07T20:16:10Z",
+  "uptime_seconds": 244
+}
+```
+
+`uptime_seconds` resets to near-zero on every restart or redeploy — the
+fastest way to confirm a just-pushed change actually landed, without needing
+the Azure portal or Kudu. `git_commit` comes back `null` on this deployment
+(Oryx's zip-deploy doesn't keep `.git`), so `app_version` + a low
+`uptime_seconds` is the signal that actually works here.
+
 ## If a request shows no URL
 
 You imported the collection but not into a workspace with the environment
@@ -57,8 +76,19 @@ selected, or the environment dropdown still says "No Environment". Every URL is
 
 ## Credentials
 
-The local environment ships with `student` / `student-pass-123`.
+Both environments ship with `student` / `student-pass-123`. On Azure this
+account is **created automatically on every server start** — nothing needs
+seeding by hand, and it survives restarts: the same fixed dataset and the
+same signing key come back every time, so a token or credential card handed
+out before a restart is still good afterward.
 
 For the workshop you'll be given your own username and password — put them in
 the environment's `username` and `password` values, then clear `token` so the
 next request logs in as you.
+
+## If tokens expire mid-session
+
+Tokens last 60 minutes by default. For a session longer than that, whoever is
+running the API needs `ACCESS_TOKEN_EXPIRE_MINUTES` set (480 covers a
+half-day) as an Azure App Setting — check with them if `GET /v1/whoami`'s
+`token_expires_in_seconds` looks short.

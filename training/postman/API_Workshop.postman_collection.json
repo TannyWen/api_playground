@@ -86,7 +86,7 @@
                 "ping"
               ]
             },
-            "description": "Is the API reachable at all? No token needed.\n\nIf this fails, it is a network problem, not an auth problem:\n  - wrong host or port\n  - http:// vs https://\n  - a proxy or VPN in the way\n  - on Azure, a 20-30s cold start on the very first call",
+            "description": "Is the API reachable at all? No token needed.\n\nIf this fails, it is a network problem, not an auth problem:\n  - wrong host or port\n  - http:// vs https://\n  - a proxy or VPN in the way\n  - on Azure, a 20-30s cold start on the very first call\n\nCheck app_version / git_commit / uptime_seconds in the body to\nconfirm which deployment you're actually talking to. A restart\nresets uptime_seconds and re-runs the seed, so data and logins\ncome back exactly as before -- but expect a few extra seconds\non the very next request while that happens.",
             "auth": {
               "type": "noauth"
             }
@@ -102,7 +102,11 @@
                   "});",
                   "pm.test('reports ok', function () {",
                   "    pm.expect(pm.response.json().status).to.eql('ok');",
-                  "});"
+                  "});",
+                  "const body = pm.response.json();",
+                  "console.log('app_version=' + body.app_version +",
+                  "    ' git_commit=' + body.git_commit +",
+                  "    ' uptime_seconds=' + body.uptime_seconds);"
                 ]
               }
             }
