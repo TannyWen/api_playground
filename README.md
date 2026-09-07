@@ -70,8 +70,10 @@ issued as a real JWT.
    ```
 
 Tokens expire after 60 minutes by default (`ACCESS_TOKEN_EXPIRE_MINUTES` env
-var). The signing key is generated per-process unless `JWT_SECRET_KEY` is set,
-so **tokens stop validating across server restarts unless you pin it**.
+var). The signing key is a fixed value baked into `app/security.py`, so
+tokens survive a server restart with no configuration needed. Set
+`JWT_SECRET_KEY` explicitly (it always overrides the fixed default) if this
+ever guards real data instead of the seeded training dataset.
 
 ## Endpoints
 

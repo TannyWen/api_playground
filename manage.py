@@ -441,8 +441,10 @@ def seed_workshop_users(
             )
         if not os.getenv("JWT_SECRET_KEY"):
             print(
-                "\nWARNING: JWT_SECRET_KEY is not set. Tokens will stop validating\n"
-                "         the moment the server restarts. Pin it before the session."
+                "\nNote: JWT_SECRET_KEY is not set, so app/security.py's fixed\n"
+                "      fallback is signing tokens. That's fine for this training\n"
+                "      deployment (tokens still survive a restart) -- set your own\n"
+                "      JWT_SECRET_KEY instead only if this ever guards real data."
             )
     finally:
         db.close()
@@ -630,13 +632,17 @@ def doctor() -> int:
 
         print("\nEnvironment:")
         for var, critical in [
-            ("JWT_SECRET_KEY", True),
+            # No longer critical: app/security.py falls back to a fixed dev
+            # secret when this is unset, so tokens still survive a restart
+            # without it -- fine for this training deployment's fake,
+            # read-only data; set a real one only if that ever changes.
+            ("JWT_SECRET_KEY", False),
             ("ACCESS_TOKEN_EXPIRE_MINUTES", False),
             ("DATABASE_URL", False),
         ]:
             val = os.getenv(var)
-            if var == "JWT_SECRET_KEY" and val:
-                shown = f"set ({len(val)} chars)"
+            if var == "JWT_SECRET_KEY":
+                shown = f"set ({len(val)} chars)" if val else "not set (using fixed dev fallback)"
             else:
                 shown = val or "not set"
             flag = "ok" if val else ("FAIL" if critical else "default")
