@@ -47,6 +47,25 @@ function Write-Step($text) { Write-Host "`n==> $text" -ForegroundColor Cyan }
 function Write-Ok($text)   { Write-Host "    $text" -ForegroundColor DarkGray }
 function Write-Warn($text) { Write-Host "    $text" -ForegroundColor Yellow }
 
+# Runs `python -c "import ..."` and returns $true/$false for whether it
+# succeeded. A missing package makes Python print a traceback to stderr, which
+# is expected here -- but under $ErrorActionPreference = "Stop", Windows
+# PowerShell 5.1 wraps ANY native-process stderr output into a terminating
+# ErrorRecord before a `2>$null` redirect gets a chance to discard it. So a
+# plain `& $Python -c "..." 2>$null` crashes the whole script on a fresh venv
+# instead of reporting "not installed yet" -- silencing EAP for just this one
+# call is what actually lets the redirect do its job.
+function Test-PythonImport($pythonExe, $importLine) {
+    $prevEAP = $ErrorActionPreference
+    $ErrorActionPreference = "SilentlyContinue"
+    try {
+        & $pythonExe -c $importLine 2>$null
+        return $LASTEXITCODE -eq 0
+    } finally {
+        $ErrorActionPreference = $prevEAP
+    }
+}
+
 Write-Host "Procurement Invoice API - workshop launcher" -ForegroundColor White
 
 # ---------------------------------------------------------------------------
@@ -55,7 +74,10 @@ Write-Host "Procurement Invoice API - workshop launcher" -ForegroundColor White
 Write-Step "Checking the virtual environment"
 if (-not (Test-Path $Python)) {
     Write-Warn "No .venv found. Creating one on Python 3.12..."
+    $prevEAP = $ErrorActionPreference
+    $ErrorActionPreference = "SilentlyContinue"
     $py312 = (& py -3.12 -c "import sys; print(sys.executable)" 2>$null)
+    $ErrorActionPreference = $prevEAP
     if (-not $py312) {
         Write-Host "    Python 3.12 was not found." -ForegroundColor Red
         Write-Host "    The pinned dependencies have no wheels for 3.13/3.14, so 3.12 is required." -ForegroundColor Red
@@ -76,8 +98,7 @@ if ($version -notmatch "3\.12") {
 # 2. Dependencies
 # ---------------------------------------------------------------------------
 Write-Step "Checking dependencies"
-& $Python -c "import fastapi, pydantic, sqlalchemy, jwt, faker" 2>$null
-if ($LASTEXITCODE -ne 0) {
+if (-not (Test-PythonImport $Python "import fastapi, pydantic, sqlalchemy, jwt, faker")) {
     Write-Warn "Installing from requirements.txt (this takes a minute)..."
     & $Python -m pip install --upgrade pip --quiet
     & $Python -m pip install -r requirements.txt
@@ -85,12 +106,11 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Ok "server dependencies present"
 
-& $Python -c "import requests, pandas" 2>$null
-if ($LASTEXITCODE -ne 0) {
+if (Test-PythonImport $Python "import requests, pandas") {
+    Write-Ok "participant dependencies present (requests, pandas)"
+} else {
     Write-Warn "pandas/requests missing - needed only for the Python exercises."
     Write-Warn "Install with:  .\.venv\Scripts\python.exe -m pip install -r requirements-training.txt"
-} else {
-    Write-Ok "participant dependencies present (requests, pandas)"
 }
 
 # ---------------------------------------------------------------------------
