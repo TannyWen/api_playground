@@ -37,6 +37,15 @@ class PingOut(BaseModel):
     server_time: datetime
     auth_required: bool = False
     next_step: str
+    # Answers "is the new version actually deployed and running" without
+    # needing Kudu or the portal: app_version is bumped by hand per change,
+    # git_commit is read straight from .git (null if not present in this
+    # deploy), and process_started_at / uptime_seconds change on every real
+    # restart -- so even an unbumped version is caught by a fresh uptime.
+    app_version: str
+    git_commit: Optional[str] = None
+    process_started_at: datetime
+    uptime_seconds: int
 
 
 class RateLimitOut(BaseModel):

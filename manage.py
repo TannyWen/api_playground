@@ -7,6 +7,9 @@ Usage:
     python manage.py backfill                  # add master data to rows that lack it
     python manage.py doctor                    # read-only health check
     python manage.py clear
+    python manage.py auto-seed                 # wipe + deterministic rebuild, reads
+                                                # WORKSHOP_DATA_SEED / WORKSHOP_MEMBERS
+                                                # from the environment (see app/main.py)
 """
 import argparse
 import os
@@ -151,11 +154,20 @@ def _slugify(name: str) -> str:
     return slug or "member"
 
 
-def _make_password() -> str:
-    a, b = secrets.choice(WORDLIST), secrets.choice(WORDLIST)
+def _make_password(rng: random.Random | None = None) -> str:
+    """Word-word-NNNN, e.g. amber-falcon-4827.
+
+    Cryptographically random by default (manual `seed-users` runs). Pass a
+    seeded `random.Random` for deterministic output instead -- used by
+    `auto_seed_on_start` so a restart regenerates the exact same passwords
+    rather than invalidating every printed credential card.
+    """
+    choose = rng.choice if rng else secrets.choice
+    number = rng.randrange(1000, 10000) if rng else (secrets.randbelow(9000) + 1000)
+    a, b = choose(WORDLIST), choose(WORDLIST)
     while b == a:
-        b = secrets.choice(WORDLIST)
-    return f"{a}-{b}-{secrets.randbelow(9000) + 1000}"
+        b = choose(WORDLIST)
+    return f"{a}-{b}-{number}"
 
 
 def _next_invoice_base(db) -> int:
@@ -352,9 +364,22 @@ def seed(num_suppliers: int, num_invoices: int, fresh: bool, rng_seed: int | Non
 
 
 def seed_workshop_users(
-    members: list[str], prefix: str, reset: bool, fmt: str, out: str | None, base_url: str
+    members: list[str],
+    prefix: str,
+    reset: bool,
+    fmt: str,
+    out: str | None,
+    base_url: str,
+    rng_seed: int | None = None,
 ) -> None:
-    """Create one account per workshop participant and print a credential sheet."""
+    """Create one account per workshop participant and print a credential sheet.
+
+    With `rng_seed` set, passwords are deterministic: the same member list, in
+    the same order, always produces the same usernames and passwords. That is
+    what lets `auto_seed_on_start` wipe and rebuild on every process restart
+    without invalidating credentials already printed and handed out.
+    """
+    rng = random.Random(rng_seed) if rng_seed is not None else None
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
@@ -375,7 +400,7 @@ def seed_workshop_users(
                 skipped += 1
                 continue
 
-            password = _make_password()
+            password = _make_password(rng)
             if existing:
                 db.delete(existing)
                 db.flush()
@@ -421,6 +446,41 @@ def seed_workshop_users(
             )
     finally:
         db.close()
+
+
+def auto_seed_on_start() -> None:
+    """Wipe and deterministically rebuild everything. Meant to run once, at
+    process startup, when AUTO_SEED_ON_START is set.
+
+    The point: a restart is no longer a risk to work around (a wiped
+    database, stale credentials) -- it is the *normal* way this dataset
+    exists. Every boot lands in the same known-good state, so there is no
+    persistent-storage requirement and no manual seeding step, on Azure or
+    anywhere else.
+
+    WORKSHOP_MEMBERS (comma-separated display names) are seeded on top of the
+    two fixed dev accounts (student/instructor), with the same fixed seed --
+    so the same member list always yields the same usernames and passwords,
+    and a mid-session restart never invalidates a card already handed out.
+    """
+    data_seed = int(os.getenv("WORKSHOP_DATA_SEED", "20260903"))
+    print(f"[auto-seed] rebuilding with fixed seed {data_seed} ...")
+    seed(num_suppliers=118, num_invoices=613, fresh=True, rng_seed=data_seed)
+
+    members = [m.strip() for m in os.getenv("WORKSHOP_MEMBERS", "").split(",") if m.strip()]
+    if members:
+        print(f"[auto-seed] seeding {len(members)} workshop account(s) ...")
+        seed_workshop_users(
+            members=members,
+            prefix="",
+            reset=True,
+            fmt="table",
+            out=None,
+            base_url=os.getenv("WORKSHOP_BASE_URL", "(see the App Service URL)"),
+            rng_seed=data_seed,
+        )
+    else:
+        print("[auto-seed] WORKSHOP_MEMBERS not set -- only the default dev accounts exist.")
 
 
 def _render_sheet(rows, fmt: str, base_url: str) -> str:
@@ -667,6 +727,15 @@ def main() -> None:
     sub.add_parser("backfill", help="Add master data to rows that lack it")
     sub.add_parser("doctor", help="Read-only health check")
     sub.add_parser("clear", help="Delete all data from the database")
+    sub.add_parser(
+        "auto-seed",
+        help=(
+            "Deterministically wipe and rebuild everything, reading "
+            "WORKSHOP_DATA_SEED / WORKSHOP_MEMBERS from the environment. "
+            "Runs automatically at app startup when AUTO_SEED_ON_START is "
+            "set; this lets you test the exact same code path by hand."
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -687,6 +756,8 @@ def main() -> None:
         sys.exit(doctor())
     elif args.command == "clear":
         clear()
+    elif args.command == "auto-seed":
+        auto_seed_on_start()
 
 
 if __name__ == "__main__":

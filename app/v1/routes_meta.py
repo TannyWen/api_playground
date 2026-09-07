@@ -20,19 +20,31 @@ from app.security import ALGORITHM, SECRET_KEY, create_access_token, verify_pass
 from app.v1 import config, ratelimit, schemas
 from app.v1.deps import current_user, principal
 from app.v1.errors import ApiError
+from app.version import STARTED_AT, __version__, git_commit
 
 router = APIRouter(tags=["v1: connection"])
 
 
 @router.get("/ping", response_model=schemas.PingOut)
 def ping():
-    """Liveness check. No authentication -- deliberately the simplest thing here."""
+    """Liveness check. No authentication -- deliberately the simplest thing here.
+
+    Also the answer to "is the new version actually live": app_version is
+    bumped by hand, git_commit comes straight from .git if the deploy included
+    it, and uptime_seconds resets on every real restart -- so a stale process
+    is visible even if someone forgot to bump the version string.
+    """
+    now = datetime.now(timezone.utc)
     return schemas.PingOut(
-        server_time=datetime.now(timezone.utc),
+        server_time=now,
         next_step=(
             "POST /v1/auth/token with Body -> x-www-form-urlencoded "
             "(fields: username, password), then GET /v1/whoami"
         ),
+        app_version=__version__,
+        git_commit=git_commit(),
+        process_started_at=STARTED_AT,
+        uptime_seconds=int((now - STARTED_AT).total_seconds()),
     )
 
 
