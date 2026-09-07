@@ -4,7 +4,7 @@ Runs against any host, so it works under a bare Python with no virtualenv --
 which means it can also be run from a participant's laptop to prove the API is
 reachable from where they will actually be sitting.
 
-    python scripts/preflight.py --base-url https://processdetraining.azurewebsites.net \
+    python scripts/preflight.py --base-url https://processdetraining-d8a8h6dtdhhvh7e2.westeurope-01.azurewebsites.net \
                                 --username alice --password amber-falcon-4827
 
 Exits non-zero if any check fails.

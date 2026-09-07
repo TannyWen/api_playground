@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-https://processdetraining.azurewebsites.net}"
+BASE_URL="${BASE_URL:-https://processdetraining-d8a8h6dtdhhvh7e2.westeurope-01.azurewebsites.net}"
 USERNAME="${USERNAME:-student}"
 PASSWORD="${PASSWORD:-student-pass-123}"
 
