@@ -20,7 +20,7 @@ You should have, from the pre-session email:
 
 - **Postman** installed
 - **VS Code** with the Python extension
-- `pip install -r requirements-training.txt` done (`requests`, `pandas`)
+- `.\.venv\Scripts\python.exe -m pip install -r requirements-training.txt` done (`requests`, `pandas`)
 - The workshop folder on your machine
 
 You'll be handed a **card with your username and password**.
