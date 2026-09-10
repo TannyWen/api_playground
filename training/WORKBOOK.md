@@ -27,9 +27,10 @@ You'll be handed a **card with your username and password**.
 
 ### Set up Postman (2 minutes)
 
-1. **Import** → drag in all three files from `training/postman/`
+1. **File -> Import** → drag in all three files from `training/postman/`
+![alt text](image.png)
 2. Environment dropdown, top right → **Workshop API (local)** (or **Azure**, whichever you're told)
-3. Click the eye icon 👁 next to it → **Edit** → put your own `username` and `password` in the **Current value** column → save
+3. Click the eye icon 👁 next to it (it can also look like a bunch of lines with an 'X') → **Edit** → put your own `username` and `password` in the **Current value** column → save
 
 > **The Initial vs Current value thing.** The variables table has two value
 > columns. *Current value* is what actually gets sent and stays on your machine.
@@ -90,9 +91,14 @@ an `access_token`.
 **Hint:** look at the `Content-Type` header each one sends, and where the server
 was looking for those fields.
 
+**Hint 2:** Google what error code 422 means.
+
 **Why this matters:** "the API rejected my credentials" and "the API never
 received my credentials" produce a similar-looking failure and have completely
 different fixes.
+
+**Note:** Error codes like (422, 429, 503, 500, etc.) are simply conventions and no API provider is forced to respect them. 
+Google's rapid ratings API, for instance, would return error 500 in the exact same case in which this API would return 422. Could you guess why?
 
 ### C3 — Use the token, and read two rejections
 
@@ -103,6 +109,8 @@ Run these three in order and note the status code of each:
 | **C3a** | no `Authorization` header at all | ? |
 | **C3b** | `Authorization: Bearer this-is-not-a-real-token` | ? |
 | **C3c** | a valid token | ? |
+
+**Tip:** In Postman, you can hover over the value of one of the parameters in a header or body and click "Variables in request" in order to see the actual value.
 
 **Done when:** you can say, in your own words, which code means *"you didn't
 present credentials"* and which means *"you presented credentials and they were
