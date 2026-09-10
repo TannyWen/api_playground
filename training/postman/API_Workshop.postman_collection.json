@@ -386,7 +386,7 @@
                 "{{sample_invoice}}"
               ]
             },
-            "description": "One invoice, fully expanded. This is the shape you will flatten.\n\nMap the nesting and mark the cardinality of each level:\n  invoice -> line_items[] -> allocations[]\n  invoice -> supplier -> address\n\nHow many rows would a fully exploded flat table have for THIS\none invoice? (lines x allocations per line)"
+            "description": "One invoice, fully expanded. This is the shape you will flatten.\n\nMap the nesting and mark the cardinality of each level:\n  invoice -> line_items[] -> postings[]\n\nNote vendor_number is a plain field on the invoice, NOT a nested\nobject -- resolving it to a name/address means calling\nGET /v1/master-data/vendors separately. That is deliberate: it is\nhow a real transactional extract references master data.\n\nHow many rows would a fully exploded flat table have for THIS\none invoice? (lines x postings per line)"
           },
           "event": [
             {
@@ -399,11 +399,13 @@
                   "});",
                   "const inv = pm.response.json();",
                   "const lines = inv.line_items || [];",
-                  "const allocs = lines.reduce((n, li) => n + (li.allocations || []).length, 0);",
-                  "console.log(inv.invoice_number + ': ' + lines.length + ' lines, ' +",
-                  "    allocs + ' allocations -> ' + allocs + ' rows when fully exploded');",
-                  "pm.test('total_amount is a STRING, not a number', function () {",
-                  "    pm.expect(inv.total_amount).to.be.a('string');",
+                  "const postings = lines.reduce((n, li) => n + (li.postings || []).length, 0);",
+                  "console.log(inv.invoice_number + ' (vendor ' + inv.vendor_number + '): ' +",
+                  "    lines.length + ' lines, ' + postings +",
+                  "    ' postings -> ' + postings + ' rows when fully exploded');",
+                  "const firstAmount = lines[0].postings[0].line_amount;",
+                  "pm.test('line_amount is a STRING, not a number', function () {",
+                  "    pm.expect(firstAmount).to.be.a('string');",
                   "});"
                 ]
               }
@@ -455,51 +457,6 @@
               }
             }
           ]
-        },
-        {
-          "name": "D3b  master-data  country=FI  -> 0 rows (the trap)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/v1/master-data/suppliers?country=FI&limit=5",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "master-data",
-                "suppliers"
-              ],
-              "query": [
-                {
-                  "key": "country",
-                  "value": "FI"
-                },
-                {
-                  "key": "limit",
-                  "value": "5"
-                }
-              ]
-            },
-            "description": "Returns an empty list. Why?\n\n`country` filters on the full name ('Finland'); `country_code`\nfilters on the ISO-2 code ('FI'). This request uses the wrong\none on purpose.\n\nRe-send with country_code=FI instead (or country=Finland) and\nyou get real rows.\n\nA real lesson: two representations of the same field, on the\nsame endpoint, is how data contracts quietly break."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "const body = pm.response.json();",
-                  "console.log('rows returned: ' + body.items.length +",
-                  "    ' (an empty result is not an error -- try country_code=FI instead)');"
-                ]
-              }
-            }
-          ]
         }
       ]
     },
@@ -513,14 +470,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/v1/master-data/suppliers?limit=5&offset=0",
+              "raw": "{{base_url}}/v1/master-data/vendors?limit=5&offset=0",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "v1",
                 "master-data",
-                "suppliers"
+                "vendors"
               ],
               "query": [
                 {
@@ -558,14 +515,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/v1/master-data/suppliers?limit=5&offset=5",
+              "raw": "{{base_url}}/v1/master-data/vendors?limit=5&offset=5",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "v1",
                 "master-data",
-                "suppliers"
+                "vendors"
               ],
               "query": [
                 {
@@ -600,14 +557,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/v1/master-data/suppliers?limit=5&offset=99999",
+              "raw": "{{base_url}}/v1/master-data/vendors?limit=5&offset=99999",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "v1",
                 "master-data",
-                "suppliers"
+                "vendors"
               ],
               "query": [
                 {
@@ -645,14 +602,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/v1/master-data/suppliers?limit=999",
+              "raw": "{{base_url}}/v1/master-data/vendors?limit=999",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "v1",
                 "master-data",
-                "suppliers"
+                "vendors"
               ],
               "query": [
                 {
@@ -837,14 +794,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/v1/master-data/suppliers?limit=10",
+              "raw": "{{base_url}}/v1/master-data/vendors?limit=10",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "v1",
                 "master-data",
-                "suppliers"
+                "vendors"
               ],
               "query": [
                 {
@@ -853,7 +810,7 @@
                 }
               ]
             },
-            "description": "Save this response to training/data/master_data_page1.json\n\nThen flatten it to one row per supplier. Watch what happens to\nthe nested `address` object versus the `contacts` array -- they\ndo not flatten the same way, and that difference is the point."
+            "description": "Save this response to training/data/master_data_page1.json\n\nFlatten it to one row per vendor. This one is intentionally easy:\nvendor master data is already flat -- no nested objects, no\narrays. `pd.json_normalize` on this needs nothing special.\n\nKeep this response open for comparison once you get to F2/F3:\nthe invoice data is a completely different shape."
           },
           "event": [
             {
@@ -890,7 +847,7 @@
                 "search"
               ]
             },
-            "description": "Save this response to training/data/invoices_page1.json\n\nThen produce, in Python:\n  F2  one row per line item   (carry the invoice header down)\n  F3  one row per allocation  (carry invoice AND line down)\n\nThen reconcile: per line, the allocation amounts must sum to\nexactly that line's line_total. It does balance -- if yours\ndoesn't, look at the dtype of your money column.",
+            "description": "Save this response to training/data/invoices_page1.json\n\nThen produce, in Python:\n  F2  one row per line item  (carry the invoice header down)\n  F3  one row per posting    (carry invoice AND line down)\n\nThen reconcile -- but at the INVOICE level, not per line: every\ninvoice's postings must sum to exactly 0.00, the way a real\ndouble-entry journal entry balances (expense + VAT, both debit,\nagainst Vendor Payable, credit). It does balance -- if yours\ndoesn't, look at the dtype of your money column.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"page_size\": 10\n}",
@@ -912,10 +869,10 @@
                   "});",
                   "const rows = pm.response.json().data;",
                   "const lines = rows.reduce((n, i) => n + (i.line_items || []).length, 0);",
-                  "const allocs = rows.reduce((n, i) => n +",
-                  "    (i.line_items || []).reduce((m, li) => m + (li.allocations || []).length, 0), 0);",
+                  "const postings = rows.reduce((n, i) => n +",
+                  "    (i.line_items || []).reduce((m, li) => m + (li.postings || []).length, 0), 0);",
                   "console.log('This response holds: ' + rows.length + ' invoices, ' +",
-                  "    lines + ' line items, ' + allocs + ' allocations');",
+                  "    lines + ' line items, ' + postings + ' postings');",
                   "console.log('So your three flat files should have exactly those row counts.');"
                 ]
               }
@@ -929,7 +886,7 @@
       "description": "Every one of these fails on purpose. Read the bodies carefully.",
       "item": [
         {
-          "name": "E1a  three validation errors at once  -> 422",
+          "name": "E1a  two validation errors at once  -> 422",
           "request": {
             "method": "POST",
             "header": [
@@ -949,10 +906,10 @@
                 "search"
               ]
             },
-            "description": "page_size is 0, currency has four letters, and min > max.\n\nThe response names every offending field, with a dotted path.\nFix all three from the error body alone, without reading source.",
+            "description": "page_size is 0, and accounting_date_to is BEFORE accounting_date_from.\n\nThe response names every offending field, with a dotted path.\nFix both from the error body alone, without reading source.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"page_size\": 0,\n  \"filters\": {\n    \"currency\": \"EURO\",\n    \"min_total\": \"5000.00\",\n    \"max_total\": \"100.00\"\n  }\n}",
+              "raw": "{\n  \"page_size\": 0,\n  \"filters\": {\n    \"accounting_date_from\": \"2025-12-31\",\n    \"accounting_date_to\": \"2025-01-01\"\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
