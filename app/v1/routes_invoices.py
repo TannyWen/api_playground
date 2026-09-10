@@ -1,7 +1,7 @@
 """Invoice extraction: POST because the filter belongs in the body.
 
 This is the GET-vs-POST lesson made concrete. A realistic extraction filter --
-a list of statuses, a date range, dozens of supplier codes -- does not fit
+a list of vendor numbers, a date range, a set of GL accounts -- does not fit
 comfortably or safely in a URL. So the parameters move into the body, and the
 request stays a read: it returns 200, creates nothing, and can be repeated.
 
@@ -28,43 +28,43 @@ router = APIRouter(prefix="/invoices", tags=["v1: invoices"])
 
 def _base_query(db: Session):
     return db.query(models.Invoice).options(
-        joinedload(models.Invoice.supplier).joinedload(models.Supplier.profile),
+        joinedload(models.Invoice.vendor),
         joinedload(models.Invoice.line_items).joinedload(
-            models.InvoiceLineItem.allocations
-        ),
+            models.InvoiceLineItem.postings
+        ).joinedload(models.Posting.account),
     )
 
 
 def _apply_filters(q, f: schemas.InvoiceFilters, db: Session):
     applied = 0
-    if f.status:
-        q = q.filter(models.Invoice.status.in_(f.status))
-        applied += 1
-    if f.supplier_codes:
-        supplier_ids = [
-            sid
-            for (sid,) in db.query(models.SupplierProfile.supplier_id).filter(
-                models.SupplierProfile.supplier_code.in_(f.supplier_codes)
+    if f.vendor_number:
+        vendor_ids = [
+            vid
+            for (vid,) in db.query(models.Vendor.id).filter(
+                models.Vendor.vendor_number.in_(f.vendor_number)
             )
         ]
         # An unmatched code yields an empty page rather than an error: "no rows"
         # is a legitimate answer, and telling the two apart is a workshop point.
-        q = q.filter(models.Invoice.supplier_id.in_(supplier_ids or [-1]))
+        q = q.filter(models.Invoice.vendor_id.in_(vendor_ids or [-1]))
         applied += 1
-    if f.issued_from:
-        q = q.filter(models.Invoice.issue_date >= f.issued_from)
+    if f.account_number:
+        matching_invoice_ids = (
+            db.query(models.Invoice.id)
+            .join(models.InvoiceLineItem)
+            .join(models.Posting)
+            .join(models.Account)
+            .filter(models.Account.account_number.in_(f.account_number))
+            .distinct()
+        )
+        ids = [iid for (iid,) in matching_invoice_ids]
+        q = q.filter(models.Invoice.id.in_(ids or [-1]))
         applied += 1
-    if f.issued_to:
-        q = q.filter(models.Invoice.issue_date <= f.issued_to)
+    if f.accounting_date_from:
+        q = q.filter(models.Invoice.accounting_date >= f.accounting_date_from)
         applied += 1
-    if f.min_total is not None:
-        q = q.filter(models.Invoice.total_amount >= f.min_total)
-        applied += 1
-    if f.max_total is not None:
-        q = q.filter(models.Invoice.total_amount <= f.max_total)
-        applied += 1
-    if f.currency:
-        q = q.filter(models.Invoice.currency == f.currency)
+    if f.accounting_date_to:
+        q = q.filter(models.Invoice.accounting_date <= f.accounting_date_to)
         applied += 1
     return q, applied
 
@@ -109,16 +109,7 @@ def execute_search(
     has_more = len(rows) > payload.page_size
     rows = rows[: payload.page_size]
 
-    inc = payload.include
-    data = [
-        projections.invoice_to_out(
-            inv,
-            include_supplier=inc.supplier,
-            include_line_items=inc.line_items,
-            include_allocations=inc.allocations,
-        )
-        for inv in rows
-    ]
+    data = [projections.invoice_to_out(inv) for inv in rows]
 
     return schemas.InvoiceSearchResponse(
         data=data,
@@ -135,7 +126,6 @@ def execute_search(
             generated_at=datetime.now(timezone.utc),
             elapsed_ms=int((time.perf_counter() - started) * 1000),
             filters_applied=filters_applied,
-            included=[k for k, v in inc.model_dump().items() if v],
         ),
     )
 
@@ -154,7 +144,7 @@ def search_invoices(
 def get_invoice(
     invoice_number: str = Path(
         ...,
-        description="The business key, e.g. INV-2024041 -- not the surrogate id.",
+        description="The business key, e.g. INV-2025-014 -- not the surrogate id.",
     ),
     db: Session = Depends(get_db),
     _: models.User = Depends(current_user),

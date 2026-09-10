@@ -15,7 +15,6 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.models import InvoiceStatus
 from app.v1 import config
 
 Strict = ConfigDict(extra="forbid")
@@ -67,45 +66,6 @@ class WhoAmIOut(BaseModel):
 # ---------------------------------------------------------------------------
 # Master data
 # ---------------------------------------------------------------------------
-class PaymentTermsOut(BaseModel):
-    code: str
-    days: int
-
-
-class AddressOut(BaseModel):
-    line1: Optional[str] = None
-    city: Optional[str] = None
-    postal_code: Optional[str] = None
-    country_code: Optional[str] = None
-
-
-class ContactOut(BaseModel):
-    name: str
-    role: str
-    email: str
-    phone: Optional[str] = None
-    is_primary: bool
-
-
-class SupplierMasterOut(BaseModel):
-    supplier_code: str
-    name: str
-    # Both representations, on purpose: `country` is the full name, while
-    # `country_code` is the ISO-2 code. Reconciling them is a workshop exercise.
-    country: str
-    country_code: str
-    tax_id: Optional[str] = None
-    duns: Optional[str] = None
-    status: str
-    is_preferred: bool
-    default_currency: str
-    payment_terms: PaymentTermsOut
-    address: AddressOut
-    contacts: List[ContactOut]
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-
-
 class OffsetPage(BaseModel):
     limit: int
     offset: int
@@ -115,8 +75,33 @@ class OffsetPage(BaseModel):
     next_offset: Optional[int] = None
 
 
-class SupplierMasterPage(BaseModel):
-    items: List[SupplierMasterOut]
+class VendorOut(BaseModel):
+    vendor_number: str
+    vendor_name: str
+    vendor_address: str
+    vendor_post_code: str
+    vendor_country: str
+    vendor_group: str
+    vendor_tax_number: Optional[str] = None
+    created_at: datetime
+
+
+class VendorPage(BaseModel):
+    items: List[VendorOut]
+    page: OffsetPage
+
+
+class AccountOut(BaseModel):
+    account_number: str
+    account_name: str
+    account_group_number: str
+    account_group_name: str
+    account_set_id: str
+    account_set_name: str
+
+
+class AccountPage(BaseModel):
+    items: List[AccountOut]
     page: OffsetPage
 
 
@@ -126,40 +111,31 @@ class SupplierMasterPage(BaseModel):
 class InvoiceFilters(BaseModel):
     model_config = Strict
 
-    status: Optional[List[InvoiceStatus]] = Field(None, min_length=1, max_length=6)
-    supplier_codes: Optional[List[str]] = Field(None, min_length=1, max_length=25)
-    issued_from: Optional[date] = None
-    issued_to: Optional[date] = None
-    min_total: Optional[Decimal] = Field(None, ge=0, le=10_000_000, decimal_places=2)
-    max_total: Optional[Decimal] = Field(None, ge=0, le=10_000_000, decimal_places=2)
-    currency: Optional[str] = Field(None, pattern=r"^[A-Z]{3}$")
+    vendor_number: Optional[List[str]] = Field(None, min_length=1, max_length=25)
+    account_number: Optional[List[str]] = Field(
+        None,
+        min_length=1,
+        max_length=25,
+        description="Match invoices with at least one posting on any of these accounts.",
+    )
+    accounting_date_from: Optional[date] = None
+    accounting_date_to: Optional[date] = None
 
     @model_validator(mode="after")
     def _check_ranges(self):
         if (
-            self.min_total is not None
-            and self.max_total is not None
-            and self.max_total < self.min_total
+            self.accounting_date_from
+            and self.accounting_date_to
+            and self.accounting_date_to < self.accounting_date_from
         ):
-            raise ValueError("max_total must be greater than or equal to min_total")
-        if self.issued_from and self.issued_to and self.issued_to < self.issued_from:
-            raise ValueError("issued_to must be on or after issued_from")
+            raise ValueError("accounting_date_to must be on or after accounting_date_from")
         return self
-
-
-class InvoiceInclude(BaseModel):
-    model_config = Strict
-
-    supplier: bool = True
-    line_items: bool = True
-    allocations: bool = True
 
 
 class InvoiceSearchRequest(BaseModel):
     model_config = Strict
 
     filters: InvoiceFilters = Field(default_factory=InvoiceFilters)
-    include: InvoiceInclude = Field(default_factory=InvoiceInclude)
     page_size: int = Field(
         config.SEARCH_DEFAULT_PAGE_SIZE,
         ge=1,
@@ -189,45 +165,26 @@ class InvoiceSearchRequest(BaseModel):
 # ---------------------------------------------------------------------------
 # Invoice search -- response
 # ---------------------------------------------------------------------------
-class AllocationOut(BaseModel):
-    cost_center: str
-    cost_center_name: str
-    gl_account: str
-    project_code: Optional[str] = None
-    percentage: Decimal
-    amount: Decimal
+class PostingOut(BaseModel):
+    account_number: str
+    line_amount: Decimal
 
 
-class InvoiceLineOut(BaseModel):
-    line_number: int
-    description: str
+class LineItemOut(BaseModel):
+    line_item: int
+    purchasing_line_description: str
     quantity: int
-    unit_price: Decimal
-    line_total: Decimal
-    allocations: Optional[List[AllocationOut]] = None
-
-
-class InvoiceSupplierOut(BaseModel):
-    supplier_code: str
-    name: str
-    country: str
-    country_code: str
-    tax_id: Optional[str] = None
-    address: AddressOut
+    postings: List[PostingOut]
 
 
 class InvoiceOut(BaseModel):
-    invoice_id: int
     invoice_number: str
-    status: InvoiceStatus
-    currency: str
-    issue_date: date
-    due_date: date
-    total_amount: Decimal
-    notes: Optional[str] = None
-    created_at: datetime
-    supplier: Optional[InvoiceSupplierOut] = None
-    line_items: Optional[List[InvoiceLineOut]] = None
+    # A reference, not embedded master data -- resolving vendor_number to a
+    # name/address is what GET /v1/master-data/vendors is for. Same idea as a
+    # real ERP extract: transactional data carries keys, not copies.
+    vendor_number: str
+    accounting_date: date
+    line_items: List[LineItemOut]
 
 
 class CursorPage(BaseModel):
@@ -247,11 +204,9 @@ class SearchMeta(BaseModel):
     generated_at: datetime
     elapsed_ms: int
     filters_applied: int
-    included: List[str]
 
 
 class InvoiceSearchResponse(BaseModel):
     data: List[InvoiceOut]
     page: CursorPage
     meta: SearchMeta
-

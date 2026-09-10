@@ -157,24 +157,23 @@ def main():
 
     # ---- Master data, offset pagination ------------------------------------
     print("\nMaster data (offset pagination)")
-    st, page, _ = call(base, "GET", "/v1/master-data/suppliers?limit=5&offset=0", token=token)
+    st, page, _ = call(base, "GET", "/v1/master-data/vendors?limit=5&offset=0", token=token)
     if not record(
         st == 200 and len(((page or {}).get("items") or [])) == 5,
-        "GET /v1/master-data/suppliers?limit=5",
+        "GET /v1/master-data/vendors?limit=5",
         f"got {st}",
     ):
         return 1
-    total_suppliers = page["page"]["total"]
-    print(f"         total suppliers: {total_suppliers}")
+    total_vendors = page["page"]["total"]
+    print(f"         total vendors: {total_vendors}")
     first = page["items"][0]
     record(
-        isinstance(first.get("contacts"), list),
-        "suppliers carry a contacts[] array",
-        f"{len(first['contacts'])} on the first row",
+        "vendor_tax_number" in first and "vendor_country" in first,
+        "vendors carry tax number and country fields",
+        first.get("vendor_country", ""),
     )
-    record(isinstance(first.get("address"), dict), "suppliers carry a nested address{}")
 
-    st, _, _ = call(base, "GET", "/v1/master-data/suppliers?limit=999", token=token)
+    st, _, _ = call(base, "GET", "/v1/master-data/vendors?limit=999", token=token)
     record(st == 422, "limit above the cap -> 422", f"got {st}")
 
     collected = []
@@ -182,21 +181,29 @@ def main():
     pages = 0
     while True:
         st, page, _ = call(
-            base, "GET", f"/v1/master-data/suppliers?limit=50&offset={offset}", token=token
+            base, "GET", f"/v1/master-data/vendors?limit=50&offset={offset}", token=token
         )
         if st != 200:
             record(False, "offset drain", f"page {pages} returned {st}")
             break
-        collected += [s["supplier_code"] for s in page["items"]]
+        collected += [v["vendor_number"] for v in page["items"]]
         pages += 1
         nxt = page["page"]["next_offset"]
         if nxt is None or pages > 60:
             break
         offset = nxt
     record(
-        len(collected) == total_suppliers and len(set(collected)) == len(collected),
-        "offset drain collects every supplier exactly once",
+        len(collected) == total_vendors and len(set(collected)) == len(collected),
+        "offset drain collects every vendor exactly once",
         f"{len(collected)} rows over {pages} pages, {len(set(collected))} unique",
+    )
+
+    st, accts, _ = call(base, "GET", "/v1/master-data/accounts?limit=50", token=token)
+    account_numbers = {a["account_number"] for a in (accts or {}).get("items", [])}
+    record(
+        st == 200 and {"2000", "2100"} <= account_numbers,
+        "GET /v1/master-data/accounts includes the payable and VAT accounts",
+        f"{len(account_numbers)} accounts",
     )
 
     # ---- Invoice search, cursor pagination ---------------------------------
@@ -229,36 +236,37 @@ def main():
     st, _, _ = call(base, "POST", "/v1/invoices/search", token=token, body={"limit": 25})
     record(st == 422, "a parameter at the wrong nesting level -> 422", f"got {st}")
 
-    # Nesting depth, which the flattening exercises depend on.
+    # Nesting depth, and the double-entry balance every invoice must satisfy.
     deep = None
     for inv in res["data"]:
         lines = inv.get("line_items") or []
-        if any(len(li.get("allocations") or []) >= 2 for li in lines):
+        if any(len(li.get("postings") or []) >= 2 for li in lines):
             deep = inv
             break
     record(
         deep is not None,
-        "an invoice exists with 2+ allocations on one line",
+        "an invoice exists with 2+ postings on one line",
         deep["invoice_number"] if deep else "none on page 1",
     )
 
     if deep:
         # Money must arrive as a JSON string -- the central flattening lesson.
+        first_posting = deep["line_items"][0]["postings"][0]
         record(
-            isinstance(deep["total_amount"], str),
-            "total_amount arrives as a JSON string, not a number",
-            repr(deep["total_amount"]),
+            isinstance(first_posting["line_amount"], str),
+            "line_amount arrives as a JSON string, not a number",
+            repr(first_posting["line_amount"]),
         )
-        for li in deep["line_items"]:
-            allocs = li.get("allocations") or []
-            if len(allocs) >= 2:
-                s = sum(Decimal(a["amount"]) for a in allocs)
-                record(
-                    s == Decimal(li["line_total"]),
-                    "allocations reconcile exactly to line_total",
-                    f"{s} vs {li['line_total']}",
-                )
-                break
+        total = sum(
+            Decimal(p["line_amount"])
+            for li in deep["line_items"]
+            for p in li["postings"]
+        )
+        record(
+            total == Decimal("0.00"),
+            "the invoice's postings sum to exactly zero",
+            f"{deep['invoice_number']}: {total}",
+        )
 
     seen = []
     cursor = None
@@ -269,16 +277,12 @@ def main():
             "POST",
             "/v1/invoices/search",
             token=token,
-            body={
-                "page_size": 25,
-                "cursor": cursor,
-                "include": {"supplier": False, "line_items": False, "allocations": False},
-            },
+            body={"page_size": 25, "cursor": cursor},
         )
         if st != 200:
             record(False, "cursor drain", f"page {pages} returned {st}")
             break
-        seen += [i["invoice_id"] for i in r["data"]]
+        seen += [i["invoice_number"] for i in r["data"]]
         pages += 1
         cursor = r["page"]["next_cursor"]
         if cursor is None or pages > 200:
@@ -302,7 +306,13 @@ def main():
         "POST",
         "/v1/invoices/search",
         token=token,
-        body={"page_size": 0, "filters": {"currency": "EURO"}},
+        body={
+            "page_size": 0,
+            "filters": {
+                "accounting_date_from": "2025-12-31",
+                "accounting_date_to": "2025-01-01",
+            },
+        },
     )
     e = (err or {}).get("error") or {}
     required = {"code", "message", "status", "request_id", "retryable", "details"}
@@ -312,8 +322,8 @@ def main():
         f"code={e.get('code')}",
     )
     record(
-        len(e.get("details") or []) >= 2,
-        "the envelope lists every offending field",
+        len(e.get("details") or []) >= 1,
+        "the envelope lists the offending field(s)",
         ", ".join(str(d.get("field")) for d in (e.get("details") or [])),
     )
     record(e.get("retryable") is False, "422 is flagged as not retryable")

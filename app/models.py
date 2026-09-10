@@ -1,30 +1,9 @@
-import enum
 from datetime import date, datetime
 
-from sqlalchemy import (
-    Boolean,
-    Column,
-    Date,
-    DateTime,
-    Enum,
-    ForeignKey,
-    Integer,
-    Numeric,
-    String,
-    Text,
-)
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, Numeric, String
 from sqlalchemy.orm import relationship
 
 from app.database import Base
-
-
-class InvoiceStatus(str, enum.Enum):
-    draft = "draft"
-    submitted = "submitted"
-    approved = "approved"
-    rejected = "rejected"
-    paid = "paid"
-    overdue = "overdue"
 
 
 class User(Base):
@@ -37,132 +16,98 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
-class Supplier(Base):
-    __tablename__ = "suppliers"
+class Vendor(Base):
+    """Vendor master data."""
+
+    __tablename__ = "vendors"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False, index=True)
-    contact_email = Column(String, nullable=False)
-    country = Column(String, nullable=False, index=True)
+    vendor_number = Column(String, unique=True, nullable=False, index=True)
+    vendor_name = Column(String, nullable=False, index=True)
+    vendor_address = Column(String, nullable=False)
+    vendor_post_code = Column(String, nullable=False)
+    vendor_country = Column(String, nullable=False, index=True)
+    vendor_group = Column(String, nullable=False, index=True)
+    vendor_tax_number = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    invoices = relationship(
-        "Invoice", back_populates="supplier", cascade="all, delete-orphan"
-    )
-    # Master-data enrichment used by the /v1 surface. Kept in side tables rather
-    # than extra columns here, because Base.metadata.create_all() creates missing
-    # tables but never ALTERs existing ones -- and there is no migration tool.
-    profile = relationship(
-        "SupplierProfile",
-        back_populates="supplier",
-        uselist=False,
-        cascade="all, delete-orphan",
-    )
-    contacts = relationship(
-        "SupplierContact", back_populates="supplier", cascade="all, delete-orphan"
-    )
+    invoices = relationship("Invoice", back_populates="vendor")
+
+
+class Account(Base):
+    """Chart-of-accounts master data.
+
+    Deliberately flat/denormalised -- account_set and account_group are real
+    hierarchy dimensions in a chart of accounts, but this table carries them
+    inline on each account row rather than as separate joined tables, the way
+    a real ERP master-data extract usually looks.
+    """
+
+    __tablename__ = "accounts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    account_number = Column(String, unique=True, nullable=False, index=True)
+    account_name = Column(String, nullable=False)
+    account_group_number = Column(String, nullable=False, index=True)
+    account_group_name = Column(String, nullable=False)
+    account_set_id = Column(String, nullable=False, index=True)
+    account_set_name = Column(String, nullable=False)
+
+    postings = relationship("Posting", back_populates="account")
 
 
 class Invoice(Base):
+    """The header. One invoice belongs to one vendor."""
+
     __tablename__ = "invoices"
 
     id = Column(Integer, primary_key=True, index=True)
     invoice_number = Column(String, unique=True, nullable=False, index=True)
-    supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=False)
-    status = Column(Enum(InvoiceStatus), default=InvoiceStatus.draft, index=True)
-    issue_date = Column(Date, nullable=False)
-    due_date = Column(Date, nullable=False)
-    currency = Column(String, default="USD")
-    total_amount = Column(Numeric(12, 2), nullable=False)
-    notes = Column(Text, nullable=True)
+    vendor_id = Column(Integer, ForeignKey("vendors.id"), nullable=False, index=True)
+    accounting_date = Column(Date, nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    supplier = relationship("Supplier", back_populates="invoices")
+    vendor = relationship("Vendor", back_populates="invoices")
     line_items = relationship(
         "InvoiceLineItem", back_populates="invoice", cascade="all, delete-orphan"
     )
 
 
 class InvoiceLineItem(Base):
+    """The purchasing line -- what was actually bought, not the accounting impact."""
+
     __tablename__ = "invoice_line_items"
 
     id = Column(Integer, primary_key=True, index=True)
-    invoice_id = Column(Integer, ForeignKey("invoices.id"), nullable=False)
-    description = Column(String, nullable=False)
+    invoice_id = Column(Integer, ForeignKey("invoices.id"), nullable=False, index=True)
+    line_item = Column(Integer, nullable=False)  # sequence number within the invoice
+    purchasing_line_description = Column(String, nullable=False)
     quantity = Column(Integer, nullable=False)
-    unit_price = Column(Numeric(12, 2), nullable=False)
-    line_total = Column(Numeric(12, 2), nullable=False)
 
     invoice = relationship("Invoice", back_populates="line_items")
-    # The delete-orphan cascade is load-bearing: without it, DELETE /invoices/{id}
-    # leaves orphaned allocation rows behind, and SQLite will not complain because
-    # PRAGMA foreign_keys is off by default.
-    allocations = relationship(
-        "InvoiceLineAllocation",
-        back_populates="line_item",
-        cascade="all, delete-orphan",
+    # Cascade is load-bearing: without it, deleting an invoice orphans postings,
+    # and SQLite won't complain since PRAGMA foreign_keys is off by default.
+    postings = relationship(
+        "Posting", back_populates="line_item", cascade="all, delete-orphan"
     )
 
 
-class SupplierProfile(Base):
-    """1:1 master-data record for a supplier: business keys and lifecycle fields."""
+class Posting(Base):
+    """One GL posting under a line item.
 
-    __tablename__ = "supplier_profiles"
-
-    id = Column(Integer, primary_key=True, index=True)
-    supplier_id = Column(
-        Integer, ForeignKey("suppliers.id"), nullable=False, unique=True, index=True
-    )
-    supplier_code = Column(String, nullable=False, unique=True, index=True)
-    country_code = Column(String(2), nullable=False, index=True)
-    vat_number = Column(String, nullable=True)
-    duns = Column(String, nullable=True)
-    payment_terms = Column(String, nullable=False, default="NET30", index=True)
-    default_currency = Column(String(3), nullable=False, default="EUR")
-    status = Column(String, nullable=False, default="active", index=True)
-    is_preferred = Column(Boolean, nullable=False, default=False, index=True)
-    address_line1 = Column(String, nullable=True)
-    address_city = Column(String, nullable=True)
-    address_postal_code = Column(String, nullable=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, index=True)
-
-    supplier = relationship("Supplier", back_populates="profile")
-
-
-class SupplierContact(Base):
-    """1:N contacts for a supplier -- the array in the master-data payload."""
-
-    __tablename__ = "supplier_contacts"
-
-    id = Column(Integer, primary_key=True, index=True)
-    supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=False, index=True)
-    full_name = Column(String, nullable=False)
-    role = Column(String, nullable=False)
-    email = Column(String, nullable=False)
-    phone = Column(String, nullable=True)
-    is_primary = Column(Boolean, nullable=False, default=False)
-
-    supplier = relationship("Supplier", back_populates="contacts")
-
-
-class InvoiceLineAllocation(Base):
-    """1:N cost splits under a line item -- the third nesting level.
-
-    Seeded so that the allocation amounts sum exactly to the parent line_total,
-    with any rounding remainder pushed onto the last allocation.
+    Signed line_amount rather than separate debit/credit columns (positive =
+    debit, negative = credit) -- every invoice's postings sum to exactly zero,
+    the way a real double-entry journal entry balances.
     """
 
-    __tablename__ = "invoice_line_allocations"
+    __tablename__ = "postings"
 
     id = Column(Integer, primary_key=True, index=True)
     line_item_id = Column(
         Integer, ForeignKey("invoice_line_items.id"), nullable=False, index=True
     )
-    cost_center = Column(String, nullable=False, index=True)
-    cost_center_name = Column(String, nullable=False)
-    gl_account = Column(String, nullable=False, index=True)
-    project_code = Column(String, nullable=True)
-    percentage = Column(Numeric(5, 2), nullable=False)
-    amount = Column(Numeric(12, 2), nullable=False)
+    account_id = Column(Integer, ForeignKey("accounts.id"), nullable=False, index=True)
+    line_amount = Column(Numeric(14, 2), nullable=False)
 
-    line_item = relationship("InvoiceLineItem", back_populates="allocations")
+    line_item = relationship("InvoiceLineItem", back_populates="postings")
+    account = relationship("Account", back_populates="postings")

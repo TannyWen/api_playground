@@ -1,10 +1,9 @@
-"""Seed, inspect or clear the procurement invoice database.
+"""Seed, inspect or clear the vendor-posting database.
 
 Usage:
-    python manage.py seed [--suppliers 118] [--invoices 613] [--fresh] [--seed 20260903]
+    python manage.py seed [--vendors 20] [--fresh] [--seed 20260903]
     python manage.py seed-users --members alice,bob,carol [--format markdown] [--out creds.md]
     python manage.py seed-users --count 8 [--prefix ws-]
-    python manage.py backfill                  # add master data to rows that lack it
     python manage.py doctor                    # read-only health check
     python manage.py clear
     python manage.py auto-seed                 # wipe + deterministic rebuild, reads
@@ -25,16 +24,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from app.database import Base, SessionLocal, engine
-from app.models import (
-    Invoice,
-    InvoiceLineAllocation,
-    InvoiceLineItem,
-    InvoiceStatus,
-    Supplier,
-    SupplierContact,
-    SupplierProfile,
-    User,
-)
+from app.models import Account, Invoice, InvoiceLineItem, Posting, User, Vendor
 from app.security import hash_password
 
 fake = Faker()
@@ -44,87 +34,54 @@ DEFAULT_USERS = {
     "instructor": "instructor-pass-456",
 }
 
-STATUSES = list(InvoiceStatus)
-CURRENCIES = ["USD", "EUR", "GBP"]
-ITEM_CATALOG = [
-    "Office chairs",
-    "Laptop docking stations",
-    "Printer toner cartridges",
-    "Cloud hosting services",
-    "Consulting hours",
-    "Steel pipes",
-    "Safety helmets",
-    "Warehouse shelving",
-    "Fleet fuel cards",
-    "Software licenses",
-    "Packaging materials",
-    "Industrial lubricant",
+# ---------------------------------------------------------------------------
+# Chart of accounts -- fixed and hand-authored, like a real one. Not randomly
+# generated: a chart of accounts should look deliberate and stay stable
+# across reseeds.
+#
+# The accounting pattern per invoice line: an expense account (debit) + VAT
+# Payable (debit) + Vendor Payable (credit, forced onto the invoice's first
+# line item) -- which is exactly standard double-entry AP posting, and
+# exactly why 100 + 10 + (-110) = 0 in the simplest case.
+# ---------------------------------------------------------------------------
+ACCOUNT_SET_ID = "AS-01"
+ACCOUNT_SET_NAME = "Global Chart of Accounts"
+
+CHART_OF_ACCOUNTS = [
+    # (account_number, account_name, account_group_number, account_group_name)
+    ("2000", "Vendor Payable", "AG-10", "Payables"),
+    ("2100", "VAT Payable", "AG-20", "Tax"),
+    ("6100", "Office Supplies", "AG-40", "Expenses"),
+    ("6120", "Professional Services", "AG-40", "Expenses"),
+    ("6300", "Furniture and Fixtures", "AG-40", "Expenses"),
+    ("6430", "Software Licences", "AG-40", "Expenses"),
+    ("6510", "Fleet and Travel", "AG-40", "Expenses"),
 ]
+VENDOR_PAYABLE_ACCOUNT = "2000"
+VAT_PAYABLE_ACCOUNT = "2100"
+VAT_RATE = Decimal("0.24")
 
-# Keeping the legacy `suppliers.country` full name coherent with the ISO-2 code in
-# supplier_profiles. The mismatch between the two representations is deliberate
-# teaching material: /suppliers?country=FI returns nothing, ?country=Finland works.
-COUNTRIES = [
-    # (name, iso2, default_currency, vat_prefix)
-    ("Finland", "FI", "EUR", "FI"),
-    ("Germany", "DE", "EUR", "DE"),
-    ("Sweden", "SE", "SEK", "SE"),
-    ("Netherlands", "NL", "EUR", "NL"),
-    ("France", "FR", "EUR", "FR"),
-    ("Poland", "PL", "PLN", "PL"),
-    ("United Kingdom", "GB", "GBP", "GB"),
-    ("United States", "US", "USD", None),
-    ("Spain", "ES", "EUR", "ES"),
-    ("Italy", "IT", "EUR", "IT"),
-]
-
-PAYMENT_TERMS = ["NET15", "NET30", "NET45", "NET60", "IMMEDIATE"]
-SUPPLIER_STATUSES = ["active", "active", "active", "active", "blocked", "pending"]
-
-COST_CENTERS = [
-    ("CC-1002", "R&D Helsinki"),
-    ("CC-1040", "R&D Stuttgart"),
-    ("CC-2001", "Sales Nordics"),
-    ("CC-2210", "Sales DACH"),
-    ("CC-3010", "IT Shared Services"),
-    ("CC-3400", "Facilities"),
-    ("CC-4100", "Logistics"),
-    ("CC-5000", "Group Functions"),
-]
-
-# Each catalog item maps to a stable GL account, so code-to-label joins in the
-# workshop reference exercise produce sensible results.
-GL_BY_ITEM = {
-    "Office chairs": ("6300", "Furniture and fixtures"),
-    "Laptop docking stations": ("6410", "IT hardware"),
-    "Printer toner cartridges": ("6100", "Office supplies"),
-    "Cloud hosting services": ("6420", "IT services"),
-    "Consulting hours": ("6120", "Professional services"),
-    "Steel pipes": ("5100", "Raw materials"),
-    "Safety helmets": ("6210", "Health and safety"),
-    "Warehouse shelving": ("6310", "Warehouse equipment"),
-    "Fleet fuel cards": ("6510", "Fleet and travel"),
-    "Software licenses": ("6430", "Software licences"),
-    "Packaging materials": ("5200", "Packaging"),
-    "Industrial lubricant": ("5300", "Consumables"),
+# Each purchasing description maps to the expense account it posts to.
+PURCHASING_ITEMS = {
+    "Office supplies": "6100",
+    "Consulting hours": "6120",
+    "Office furniture": "6300",
+    "Software licenses": "6430",
+    "Fleet fuel": "6510",
 }
 
-UOM_BY_ITEM = {
-    "Consulting hours": "HUR",
-    "Cloud hosting services": "MON",
-    "Steel pipes": "MTR",
-    "Industrial lubricant": "LTR",
-    "Packaging materials": "KGM",
-}
+VENDOR_GROUPS = ["Goods Suppliers", "Service Providers", "Professional Services", "Utilities"]
 
-# Fixed splits, so allocation percentages always total exactly 100.
-ALLOCATION_SPLITS = [
-    (Decimal("100.00"),),
-    (Decimal("60.00"), Decimal("40.00")),
-    (Decimal("50.00"), Decimal("50.00")),
-    (Decimal("70.00"), Decimal("30.00")),
-    (Decimal("50.00"), Decimal("30.00"), Decimal("20.00")),
-    (Decimal("40.00"), Decimal("30.00"), Decimal("30.00")),
+# (country name, ISO-2, VAT prefix or None)
+VENDOR_COUNTRIES = [
+    ("Finland", "FI"),
+    ("Germany", "DE"),
+    ("Sweden", "SE"),
+    ("Netherlands", "NL"),
+    ("France", "FR"),
+    ("United Kingdom", "GB"),
+    ("United States", None),
+    ("Poland", "PL"),
 ]
 
 # Deliberately unambiguous: no 0/O, no 1/l/I, nothing that breaks when dictated
@@ -170,82 +127,79 @@ def _make_password(rng: random.Random | None = None) -> str:
     return f"{a}-{b}-{number}"
 
 
-def _next_invoice_base(db) -> int:
-    """Continue numbering past whatever is already stored.
-
-    The original seeder hardcoded INV-{2024000 + i}, so a second run collided on
-    the unique constraint and aborted.
-    """
+def _next_invoice_suffix(db) -> int:
+    """Continue numbering past whatever is already stored (INV-2025-NNN)."""
     suffixes = []
     for (number,) in db.query(Invoice.invoice_number).all():
-        m = re.match(r"^INV-(\d+)$", number or "")
+        m = re.match(r"^INV-2025-(\d+)$", number or "")
         if m:
             suffixes.append(int(m.group(1)))
-    return (max(suffixes) + 1) if suffixes else 2024001
+    return (max(suffixes) + 1) if suffixes else 1
 
 
-def _allocation_rows(line_total: Decimal, rng: random.Random):
-    """Split a line total into allocations that sum to it *exactly*.
-
-    Every amount but the last is rounded normally; the last absorbs the rounding
-    remainder. This is what makes the workshop reconciliation land on zero.
-    """
-    split = rng.choice(ALLOCATION_SPLITS)
-    rows, running = [], Decimal("0.00")
-    for idx, pct in enumerate(split):
-        if idx == len(split) - 1:
-            amount = line_total - running
-        else:
-            amount = (line_total * pct / Decimal("100")).quantize(Decimal("0.01"))
-            running += amount
-        centre, centre_name = rng.choice(COST_CENTERS)
-        rows.append(
-            {
-                "cost_center": centre,
-                "cost_center_name": centre_name,
-                "percentage": pct,
-                "amount": amount,
-                "project_code": f"PRJ-{rng.randint(10, 99)}" if rng.random() < 0.4 else None,
-            }
-        )
-    return rows
-
-
-def _profile_for(supplier: Supplier, index: int, rng: random.Random) -> SupplierProfile:
-    name, iso2, currency, vat_prefix = rng.choice(COUNTRIES)
-    supplier.country = name  # keep legacy field coherent with the ISO-2 code
-    return SupplierProfile(
-        supplier_id=supplier.id,
-        supplier_code=f"SUP-{index:06d}",
-        country_code=iso2,
-        vat_number=f"{vat_prefix}{rng.randint(10**7, 10**9)}" if vat_prefix else None,
-        duns=str(rng.randint(100000000, 999999999)),
-        payment_terms=rng.choice(PAYMENT_TERMS),
-        default_currency=currency,
-        status=rng.choice(SUPPLIER_STATUSES),
-        is_preferred=rng.random() < 0.3,
-        address_line1=fake.street_address(),
-        address_city=fake.city(),
-        address_postal_code=fake.postcode(),
-        updated_at=datetime.utcnow() - timedelta(days=rng.randint(0, 400)),
+def _make_vendor(index: int, rng: random.Random) -> Vendor:
+    country, iso2 = rng.choice(VENDOR_COUNTRIES)
+    number = rng.randint(100, 999)
+    return Vendor(
+        vendor_number=f"V-{number:04d}",
+        vendor_name=fake.company(),
+        vendor_address=fake.street_address(),
+        vendor_post_code=fake.postcode(),
+        vendor_country=country,
+        vendor_group=rng.choice(VENDOR_GROUPS),
+        vendor_tax_number=f"{iso2}{rng.randint(10**7, 10**9)}" if iso2 else None,
     )
 
 
-def _contacts_for(supplier: Supplier, rng: random.Random) -> list[SupplierContact]:
-    roles = ["Account Manager", "AP Clerk", "Sales", "Support", "Contract Owner"]
-    rows = []
-    for i in range(rng.randint(1, 3)):
-        rows.append(
-            SupplierContact(
-                supplier_id=supplier.id,
-                full_name=fake.name(),
-                role=roles[i % len(roles)],
-                email=fake.company_email(),
-                phone=fake.phone_number() if rng.random() < 0.8 else None,
-                is_primary=(i == 0),
+def _make_invoice(
+    invoice_number: str,
+    vendor: Vendor,
+    accounting_date: date,
+    accounts: dict,
+    rng: random.Random,
+) -> Invoice:
+    """Build one invoice with 1-4 line items, whose postings sum to exactly
+    zero -- an expense + VAT posting per line, and a single Vendor Payable
+    posting (the credit that balances the whole invoice) forced onto the
+    first line item.
+    """
+    num_lines = rng.randint(1, 4)
+    line_items = []
+    running_total = Decimal("0.00")
+
+    for i in range(1, num_lines + 1):
+        description = rng.choice(list(PURCHASING_ITEMS))
+        expense_account = accounts[PURCHASING_ITEMS[description]]
+        vat_account = accounts[VAT_PAYABLE_ACCOUNT]
+
+        expense_amount = Decimal(str(round(rng.uniform(50, 2500), 2)))
+        vat_amount = (expense_amount * VAT_RATE).quantize(Decimal("0.01"))
+        running_total += expense_amount + vat_amount
+
+        line_items.append(
+            InvoiceLineItem(
+                line_item=i,
+                purchasing_line_description=description,
+                quantity=rng.randint(1, 50),
+                postings=[
+                    Posting(account=expense_account, line_amount=expense_amount),
+                    Posting(account=vat_account, line_amount=vat_amount),
+                ],
             )
         )
-    return rows
+
+    # The balancing entry -- forced onto the first line item so the payload
+    # stays a clean 3-level tree with nothing floating at the invoice level.
+    line_items[0].postings.append(
+        Posting(account=accounts[VENDOR_PAYABLE_ACCOUNT], line_amount=-running_total)
+    )
+
+    return Invoice(
+        invoice_number=invoice_number,
+        vendor_id=vendor.id,
+        accounting_date=accounting_date,
+        line_items=line_items,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -269,7 +223,33 @@ def seed_users(db) -> None:
     )
 
 
-def seed(num_suppliers: int, num_invoices: int, fresh: bool, rng_seed: int | None) -> None:
+def _seed_accounts(db) -> dict:
+    """Idempotent: existing accounts are reused, not duplicated."""
+    accounts = {}
+    for number, name, group_number, group_name in CHART_OF_ACCOUNTS:
+        acct = db.query(Account).filter(Account.account_number == number).first()
+        if not acct:
+            acct = Account(
+                account_number=number,
+                account_name=name,
+                account_group_number=group_number,
+                account_group_name=group_name,
+                account_set_id=ACCOUNT_SET_ID,
+                account_set_name=ACCOUNT_SET_NAME,
+            )
+            db.add(acct)
+            db.flush()
+        accounts[number] = acct
+    db.commit()
+    return accounts
+
+
+def seed(num_vendors: int, fresh: bool, rng_seed: int | None) -> None:
+    """Rebuild vendors, the chart of accounts, and a year of invoices (2025).
+
+    ~5 invoices per month, 1-4 line items each, every invoice's postings
+    summing to exactly zero.
+    """
     if fresh:
         clear(quiet=True)
 
@@ -281,82 +261,40 @@ def seed(num_suppliers: int, num_invoices: int, fresh: bool, rng_seed: int | Non
     db = SessionLocal()
     try:
         seed_users(db)
+        accounts = _seed_accounts(db)
 
-        suppliers = [
-            Supplier(
-                name=fake.company(),
-                contact_email=fake.company_email(),
-                country="",  # replaced by _profile_for, kept coherent with country_code
-            )
-            for _ in range(num_suppliers)
-        ]
-        db.add_all(suppliers)
+        vendors = [_make_vendor(i, rng) for i in range(num_vendors)]
+        db.add_all(vendors)
         db.commit()
-        for s in suppliers:
-            db.refresh(s)
+        for v in vendors:
+            db.refresh(v)
 
-        # Master data: 1:1 profile plus 1-3 contacts per supplier.
-        code_base = db.query(SupplierProfile).count()
-        for offset, supplier in enumerate(suppliers, start=1):
-            db.add(_profile_for(supplier, code_base + offset, rng))
-            db.add_all(_contacts_for(supplier, rng))
-        db.commit()
-
-        base = _next_invoice_base(db)
+        suffix = _next_invoice_suffix(db)
         created = skipped = 0
-        for i in range(num_invoices):
-            supplier = rng.choice(suppliers)
-            issue_date = date.today() - timedelta(days=rng.randint(0, 365))
-            due_date = issue_date + timedelta(days=rng.choice([15, 30, 45, 60]))
-
-            line_items = []
-            for _ in range(rng.randint(1, 5)):
-                description = rng.choice(ITEM_CATALOG)
-                qty = rng.randint(1, 50)
-                unit_price = Decimal(str(round(rng.uniform(5, 500), 2)))
-                line_total = (unit_price * qty).quantize(Decimal("0.01"))
-                item = InvoiceLineItem(
-                    description=description,
-                    quantity=qty,
-                    unit_price=unit_price,
-                    line_total=line_total,
+        for month in range(1, 13):
+            for _ in range(rng.randint(4, 6)):
+                vendor = rng.choice(vendors)
+                day = rng.randint(1, 28)
+                accounting_date = date(2025, month, day)
+                invoice = _make_invoice(
+                    f"INV-2025-{suffix:03d}", vendor, accounting_date, accounts, rng
                 )
-                item.allocations = [
-                    InvoiceLineAllocation(
-                        gl_account=GL_BY_ITEM[description][0], **row
-                    )
-                    for row in _allocation_rows(line_total, rng)
-                ]
-                line_items.append(item)
+                db.add(invoice)
+                try:
+                    db.commit()
+                    created += 1
+                except IntegrityError:
+                    # A residual invoice_number clash degrades to a skip
+                    # rather than aborting the whole seed.
+                    db.rollback()
+                    skipped += 1
+                suffix += 1
 
-            total_amount = sum((li.line_total for li in line_items), Decimal("0"))
-
-            invoice = Invoice(
-                invoice_number=f"INV-{base + i}",
-                supplier_id=supplier.id,
-                status=rng.choice(STATUSES),
-                issue_date=issue_date,
-                due_date=due_date,
-                currency=rng.choice(CURRENCIES),
-                total_amount=total_amount,
-                notes=fake.sentence() if rng.random() < 0.3 else None,
-                line_items=line_items,
-            )
-            db.add(invoice)
-            try:
-                db.commit()
-                created += 1
-            except IntegrityError:
-                # A residual invoice_number clash degrades to a skip rather than
-                # aborting the whole seed.
-                db.rollback()
-                skipped += 1
-
-        allocations = db.query(InvoiceLineAllocation).count()
-        lines = db.query(InvoiceLineItem).count()
+        line_items = db.query(InvoiceLineItem).count()
+        postings = db.query(Posting).count()
         print(
-            f"Seeded {num_suppliers} suppliers, {created} invoices, "
-            f"{lines} line items, {allocations} allocations."
+            f"Seeded {num_vendors} vendors, {len(accounts)} accounts, {created} invoices, "
+            f"{line_items} line items, {postings} postings."
             + (f" Skipped {skipped} on number collision." if skipped else "")
         )
     finally:
@@ -467,7 +405,7 @@ def auto_seed_on_start() -> None:
     """
     data_seed = int(os.getenv("WORKSHOP_DATA_SEED", "20260903"))
     print(f"[auto-seed] rebuilding with fixed seed {data_seed} ...")
-    seed(num_suppliers=118, num_invoices=613, fresh=True, rng_seed=data_seed)
+    seed(num_vendors=20, fresh=True, rng_seed=data_seed)
 
     members = [m.strip() for m in os.getenv("WORKSHOP_MEMBERS", "").split(",") if m.strip()]
     if members:
@@ -506,76 +444,33 @@ def _render_sheet(rows, fmt: str, base_url: str) -> str:
     return header + "\n" + body
 
 
-def backfill() -> None:
-    """Add master data to rows that predate it. Additive; never overwrites."""
-    Base.metadata.create_all(bind=engine)
-    rng = random.Random()
-    db = SessionLocal()
-    try:
-        added_profiles = added_contacts = added_allocs = 0
-
-        code_base = db.query(SupplierProfile).count()
-        for supplier in db.query(Supplier).all():
-            if not supplier.profile:
-                code_base += 1
-                db.add(_profile_for(supplier, code_base, rng))
-                added_profiles += 1
-            if not supplier.contacts:
-                db.add_all(_contacts_for(supplier, rng))
-                added_contacts += 1
-        db.commit()
-
-        for item in db.query(InvoiceLineItem).all():
-            if not item.allocations:
-                description = item.description
-                gl = GL_BY_ITEM.get(description, ("6100", "Office supplies"))[0]
-                item.allocations = [
-                    InvoiceLineAllocation(gl_account=gl, **row)
-                    for row in _allocation_rows(Decimal(str(item.line_total)), rng)
-                ]
-                added_allocs += 1
-        db.commit()
-
-        print(
-            f"Backfilled {added_profiles} profiles, {added_contacts} contact sets, "
-            f"{added_allocs} line-item allocation sets."
-        )
-    finally:
-        db.close()
-
+EXPECTED_TABLES = [
+    "users",
+    "vendors",
+    "accounts",
+    "invoices",
+    "invoice_line_items",
+    "postings",
+]
 
 ORPHAN_CHECKS = {
-    "allocations without a line item": (
-        "SELECT COUNT(*) FROM invoice_line_allocations a "
-        "LEFT JOIN invoice_line_items l ON l.id = a.line_item_id WHERE l.id IS NULL"
+    "postings without a line item": (
+        "SELECT COUNT(*) FROM postings p "
+        "LEFT JOIN invoice_line_items l ON l.id = p.line_item_id WHERE l.id IS NULL"
+    ),
+    "postings without an account": (
+        "SELECT COUNT(*) FROM postings p "
+        "LEFT JOIN accounts a ON a.id = p.account_id WHERE a.id IS NULL"
     ),
     "line items without an invoice": (
         "SELECT COUNT(*) FROM invoice_line_items l "
         "LEFT JOIN invoices i ON i.id = l.invoice_id WHERE i.id IS NULL"
     ),
-    "invoices without a supplier": (
+    "invoices without a vendor": (
         "SELECT COUNT(*) FROM invoices i "
-        "LEFT JOIN suppliers s ON s.id = i.supplier_id WHERE s.id IS NULL"
-    ),
-    "profiles without a supplier": (
-        "SELECT COUNT(*) FROM supplier_profiles p "
-        "LEFT JOIN suppliers s ON s.id = p.supplier_id WHERE s.id IS NULL"
-    ),
-    "contacts without a supplier": (
-        "SELECT COUNT(*) FROM supplier_contacts c "
-        "LEFT JOIN suppliers s ON s.id = c.supplier_id WHERE s.id IS NULL"
+        "LEFT JOIN vendors v ON v.id = i.vendor_id WHERE v.id IS NULL"
     ),
 }
-
-EXPECTED_TABLES = [
-    "users",
-    "suppliers",
-    "supplier_profiles",
-    "supplier_contacts",
-    "invoices",
-    "invoice_line_items",
-    "invoice_line_allocations",
-]
 
 
 def doctor() -> int:
@@ -598,12 +493,11 @@ def doctor() -> int:
         print("\nRow counts:")
         for label, model in [
             ("users", User),
-            ("suppliers", Supplier),
-            ("supplier_profiles", SupplierProfile),
-            ("supplier_contacts", SupplierContact),
+            ("vendors", Vendor),
+            ("accounts", Account),
             ("invoices", Invoice),
             ("invoice_line_items", InvoiceLineItem),
-            ("invoice_line_allocations", InvoiceLineAllocation),
+            ("postings", Posting),
         ]:
             print(f"  {label:28} {db.query(model).count():>7}")
 
@@ -613,29 +507,30 @@ def doctor() -> int:
             problems += 0 if n == 0 else 1
             print(f"  [{'ok' if n == 0 else 'FAIL'}] {label}: {n}")
 
-        # The reconciliation the workshop depends on.
+        # The reconciliation the workshop depends on: every invoice's postings
+        # sum to exactly zero, the way a real double-entry journal balances.
         mismatch = db.execute(
             text(
                 "SELECT COUNT(*) FROM ("
-                "  SELECT l.id, l.line_total, SUM(a.amount) AS alloc"
-                "  FROM invoice_line_items l"
-                "  JOIN invoice_line_allocations a ON a.line_item_id = l.id"
-                "  GROUP BY l.id HAVING ROUND(l.line_total, 2) != ROUND(SUM(a.amount), 2)"
+                "  SELECT i.id, SUM(p.line_amount) AS total"
+                "  FROM invoices i"
+                "  JOIN invoice_line_items l ON l.invoice_id = i.id"
+                "  JOIN postings p ON p.line_item_id = l.id"
+                "  GROUP BY i.id HAVING ROUND(SUM(p.line_amount), 2) != 0.00"
                 ")"
             )
         ).scalar()
         problems += 0 if mismatch == 0 else 1
         print(
-            f"  [{'ok' if mismatch == 0 else 'FAIL'}] line totals matching allocation sums: "
+            f"  [{'ok' if mismatch == 0 else 'FAIL'}] invoices balancing to zero: "
             f"{mismatch} mismatched"
         )
 
         print("\nEnvironment:")
         for var, critical in [
-            # No longer critical: app/security.py falls back to a fixed dev
-            # secret when this is unset, so tokens still survive a restart
-            # without it -- fine for this training deployment's fake,
-            # read-only data; set a real one only if that ever changes.
+            # Not critical: app/security.py falls back to a fixed dev secret
+            # when this is unset, so tokens still survive a restart without
+            # it -- fine for this training deployment's fake, read-only data.
             ("JWT_SECRET_KEY", False),
             ("ACCESS_TOKEN_EXPIRE_MINUTES", False),
             ("DATABASE_URL", False),
@@ -650,8 +545,8 @@ def doctor() -> int:
                 problems += 1
             print(f"  [{flag}] {var} = {shown}")
 
-        max_suffix = _next_invoice_base(db) - 1
-        print(f"\nHighest invoice number in use: INV-{max_suffix}")
+        max_suffix = _next_invoice_suffix(db) - 1
+        print(f"\nHighest invoice number in use: INV-2025-{max_suffix:03d}")
     finally:
         db.close()
 
@@ -669,12 +564,11 @@ def clear(quiet: bool = False) -> None:
     db = SessionLocal()
     try:
         counts = {
-            "allocations": db.query(InvoiceLineAllocation).delete(),
+            "postings": db.query(Posting).delete(),
             "line items": db.query(InvoiceLineItem).delete(),
             "invoices": db.query(Invoice).delete(),
-            "contacts": db.query(SupplierContact).delete(),
-            "profiles": db.query(SupplierProfile).delete(),
-            "suppliers": db.query(Supplier).delete(),
+            "vendors": db.query(Vendor).delete(),
+            "accounts": db.query(Account).delete(),
             "users": db.query(User).delete(),
         }
         db.commit()
@@ -704,8 +598,7 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command", required=True)
 
     seed_parser = sub.add_parser("seed", help="Populate the database with fake data")
-    seed_parser.add_argument("--suppliers", type=int, default=118)
-    seed_parser.add_argument("--invoices", type=int, default=613)
+    seed_parser.add_argument("--vendors", type=int, default=20)
     seed_parser.add_argument(
         "--fresh", action="store_true", help="Clear everything first"
     )
@@ -730,7 +623,6 @@ def main() -> None:
     users_parser.add_argument("--out", help="Also write the sheet to this file")
     users_parser.add_argument("--base-url", default="http://127.0.0.1:8000")
 
-    sub.add_parser("backfill", help="Add master data to rows that lack it")
     sub.add_parser("doctor", help="Read-only health check")
     sub.add_parser("clear", help="Delete all data from the database")
     sub.add_parser(
@@ -746,7 +638,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.command == "seed":
-        seed(args.suppliers, args.invoices, args.fresh, args.seed)
+        seed(args.vendors, args.fresh, args.seed)
     elif args.command == "seed-users":
         seed_workshop_users(
             _read_members(args),
@@ -756,8 +648,6 @@ def main() -> None:
             args.out,
             args.base_url,
         )
-    elif args.command == "backfill":
-        backfill()
     elif args.command == "doctor":
         sys.exit(doctor())
     elif args.command == "clear":
