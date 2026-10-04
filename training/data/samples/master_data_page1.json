@@ -1,395 +1,112 @@
 {
-  "items": [
-    {
-      "supplier_code": "SUP-000001",
-      "name": "Nelson-Carney",
-      "country": "United States",
-      "country_code": "US",
-      "tax_id": null,
-      "duns": "390196551",
-      "status": "pending",
-      "is_preferred": false,
-      "default_currency": "USD",
-      "payment_terms": {
-        "code": "NET30",
-        "days": 30
-      },
-      "address": {
-        "line1": "841 Austin Plain Suite 816",
-        "city": "Johnton",
-        "postal_code": "03298",
-        "country_code": "US"
-      },
-      "contacts": [
+    "items": [
         {
-          "name": "Kyle Stevens",
-          "role": "Account Manager",
-          "email": "andersonjames@bryant-martin.com",
-          "phone": "8692604568",
-          "is_primary": true
+            "vendor_number": "V-0233",
+            "vendor_name": "Lopez-Lopez",
+            "vendor_address": "724 Samantha Burgs",
+            "vendor_post_code": "76971",
+            "vendor_country": "Sweden",
+            "vendor_group": "Service Providers",
+            "vendor_tax_number": "SE350762428",
+            "created_at": "2026-09-10T21:05:03.227065"
         },
         {
-          "name": "Sarah Austin",
-          "role": "AP Clerk",
-          "email": "gkelley@wells.com",
-          "phone": "824-433-3985",
-          "is_primary": false
-        }
-      ],
-      "created_at": "2026-09-04T09:48:26.666794",
-      "updated_at": "2026-01-01T09:48:26.708959"
-    },
-    {
-      "supplier_code": "SUP-000002",
-      "name": "Lewis, Moses and Ortega",
-      "country": "Spain",
-      "country_code": "ES",
-      "tax_id": "ES792826837",
-      "duns": "653533776",
-      "status": "pending",
-      "is_preferred": true,
-      "default_currency": "EUR",
-      "payment_terms": {
-        "code": "NET15",
-        "days": 15
-      },
-      "address": {
-        "line1": "5523 Berger Mountain Suite 062",
-        "city": "New Jasonborough",
-        "postal_code": "63936",
-        "country_code": "ES"
-      },
-      "contacts": [
-        {
-          "name": "Amanda Alexander",
-          "role": "Account Manager",
-          "email": "lisataylor@martinez-kerr.com",
-          "phone": "001-298-956-0130x29734",
-          "is_primary": true
+            "vendor_number": "V-0242",
+            "vendor_name": "Lopez Inc",
+            "vendor_address": "5891 Moore Springs",
+            "vendor_post_code": "13617",
+            "vendor_country": "United Kingdom",
+            "vendor_group": "Utilities",
+            "vendor_tax_number": "GB847854876",
+            "created_at": "2026-09-10T21:05:03.227065"
         },
         {
-          "name": "Denise Bailey",
-          "role": "AP Clerk",
-          "email": "greenjacob@freeman.net",
-          "phone": "(310)604-0099",
-          "is_primary": false
+            "vendor_number": "V-0269",
+            "vendor_name": "Williams Inc",
+            "vendor_address": "04339 Brown Ways Suite 628",
+            "vendor_post_code": "98464",
+            "vendor_country": "Sweden",
+            "vendor_group": "Service Providers",
+            "vendor_tax_number": "SE239003595",
+            "created_at": "2026-09-10T21:05:03.227065"
         },
         {
-          "name": "Joseph Rodriguez",
-          "role": "Sales",
-          "email": "bwhite@johnson.info",
-          "phone": "503-578-8966x59728",
-          "is_primary": false
-        }
-      ],
-      "created_at": "2026-09-04T09:48:26.666794",
-      "updated_at": "2026-05-11T09:48:26.708959"
-    },
-    {
-      "supplier_code": "SUP-000003",
-      "name": "Delacruz-Villarreal",
-      "country": "France",
-      "country_code": "FR",
-      "tax_id": "FR81452870",
-      "duns": "904775831",
-      "status": "active",
-      "is_preferred": false,
-      "default_currency": "EUR",
-      "payment_terms": {
-        "code": "NET15",
-        "days": 15
-      },
-      "address": {
-        "line1": "9757 Harrison Pike Apt. 469",
-        "city": "Port Wendychester",
-        "postal_code": "12183",
-        "country_code": "FR"
-      },
-      "contacts": [
-        {
-          "name": "Steven Berry",
-          "role": "Account Manager",
-          "email": "donnagolden@ward.com",
-          "phone": "8062526374",
-          "is_primary": true
-        }
-      ],
-      "created_at": "2026-09-04T09:48:26.666794",
-      "updated_at": "2026-06-10T09:48:26.708959"
-    },
-    {
-      "supplier_code": "SUP-000004",
-      "name": "Frederick and Sons",
-      "country": "Sweden",
-      "country_code": "SE",
-      "tax_id": "SE754991465",
-      "duns": "968508853",
-      "status": "active",
-      "is_preferred": false,
-      "default_currency": "SEK",
-      "payment_terms": {
-        "code": "IMMEDIATE",
-        "days": 0
-      },
-      "address": {
-        "line1": "859 Robinson Crest",
-        "city": "South Jasonhaven",
-        "postal_code": "21781",
-        "country_code": "SE"
-      },
-      "contacts": [
-        {
-          "name": "Daniel Martin",
-          "role": "Account Manager",
-          "email": "george29@burgess.com",
-          "phone": null,
-          "is_primary": true
-        }
-      ],
-      "created_at": "2026-09-04T09:48:26.666794",
-      "updated_at": "2025-11-19T09:48:26.708959"
-    },
-    {
-      "supplier_code": "SUP-000005",
-      "name": "Gutierrez and Sons",
-      "country": "Sweden",
-      "country_code": "SE",
-      "tax_id": "SE521140492",
-      "duns": "868435634",
-      "status": "active",
-      "is_preferred": true,
-      "default_currency": "SEK",
-      "payment_terms": {
-        "code": "NET30",
-        "days": 30
-      },
-      "address": {
-        "line1": "306 Collins Hills",
-        "city": "New William",
-        "postal_code": "51701",
-        "country_code": "SE"
-      },
-      "contacts": [
-        {
-          "name": "Shelia Burgess",
-          "role": "Account Manager",
-          "email": "paulrobinson@lopez-shepard.biz",
-          "phone": "666-584-8926x2377",
-          "is_primary": true
+            "vendor_number": "V-0369",
+            "vendor_name": "Lane, Ortiz and Alexander",
+            "vendor_address": "351 Tina Road",
+            "vendor_post_code": "80420",
+            "vendor_country": "Germany",
+            "vendor_group": "Service Providers",
+            "vendor_tax_number": "DE258954118",
+            "created_at": "2026-09-10T21:05:03.227065"
         },
         {
-          "name": "Shannon Anderson",
-          "role": "AP Clerk",
-          "email": "bsmith@guzman.biz",
-          "phone": "001-433-764-4308x0947",
-          "is_primary": false
+            "vendor_number": "V-0376",
+            "vendor_name": "Nelson-Carney",
+            "vendor_address": "5375 William Passage",
+            "vendor_post_code": "16758",
+            "vendor_country": "Poland",
+            "vendor_group": "Service Providers",
+            "vendor_tax_number": "PL700307431",
+            "created_at": "2026-09-10T21:05:03.227065"
         },
         {
-          "name": "Ryan Guerrero",
-          "role": "Sales",
-          "email": "jacquelinepowell@lee-howe.com",
-          "phone": "(467)556-0523",
-          "is_primary": false
-        }
-      ],
-      "created_at": "2026-09-04T09:48:26.666794",
-      "updated_at": "2026-05-13T09:48:26.708959"
-    },
-    {
-      "supplier_code": "SUP-000006",
-      "name": "Allen, Carlson and Keith",
-      "country": "Sweden",
-      "country_code": "SE",
-      "tax_id": "SE759401435",
-      "duns": "912409849",
-      "status": "active",
-      "is_preferred": false,
-      "default_currency": "SEK",
-      "payment_terms": {
-        "code": "NET30",
-        "days": 30
-      },
-      "address": {
-        "line1": "70718 Powell Plaza",
-        "city": "Port Kristiville",
-        "postal_code": "10258",
-        "country_code": "SE"
-      },
-      "contacts": [
-        {
-          "name": "Elizabeth Kelly",
-          "role": "Account Manager",
-          "email": "steven33@russell-smith.com",
-          "phone": "001-362-831-9819",
-          "is_primary": true
+            "vendor_number": "V-0430",
+            "vendor_name": "Brooks, Sandoval and Boyle",
+            "vendor_address": "0077 Johnston Springs Apt. 638",
+            "vendor_post_code": "57823",
+            "vendor_country": "Finland",
+            "vendor_group": "Service Providers",
+            "vendor_tax_number": "FI521140492",
+            "created_at": "2026-09-10T21:05:03.227065"
         },
         {
-          "name": "Cole Mack",
-          "role": "AP Clerk",
-          "email": "ucharles@jenkins-chavez.net",
-          "phone": "001-462-351-0505",
-          "is_primary": false
-        }
-      ],
-      "created_at": "2026-09-04T09:48:26.666794",
-      "updated_at": "2025-10-27T09:48:26.708959"
-    },
-    {
-      "supplier_code": "SUP-000007",
-      "name": "Berry, Lynch and Cooper",
-      "country": "Italy",
-      "country_code": "IT",
-      "tax_id": "IT790793171",
-      "duns": "357903053",
-      "status": "blocked",
-      "is_preferred": false,
-      "default_currency": "EUR",
-      "payment_terms": {
-        "code": "NET45",
-        "days": 45
-      },
-      "address": {
-        "line1": "88645 Bonilla Ports Suite 499",
-        "city": "West Nancyburgh",
-        "postal_code": "35022",
-        "country_code": "IT"
-      },
-      "contacts": [
-        {
-          "name": "Amy Goodwin",
-          "role": "Account Manager",
-          "email": "cheyennehopkins@olsen.com",
-          "phone": "(388)501-1406",
-          "is_primary": true
+            "vendor_number": "V-0435",
+            "vendor_name": "Wilson, Mcguire and James",
+            "vendor_address": "337 Steele Mission Apt. 619",
+            "vendor_post_code": "97860",
+            "vendor_country": "United Kingdom",
+            "vendor_group": "Service Providers",
+            "vendor_tax_number": "GB380169354",
+            "created_at": "2026-09-10T21:05:03.227065"
         },
         {
-          "name": "Nicole Smith",
-          "role": "AP Clerk",
-          "email": "joshua63@turner-marquez.com",
-          "phone": "277.584.6308x24049",
-          "is_primary": false
+            "vendor_number": "V-0441",
+            "vendor_name": "Mack and Sons",
+            "vendor_address": "052 Baldwin Curve Apt. 538",
+            "vendor_post_code": "03547",
+            "vendor_country": "Poland",
+            "vendor_group": "Service Providers",
+            "vendor_tax_number": "PL552002129",
+            "created_at": "2026-09-10T21:05:03.227065"
         },
         {
-          "name": "Roy Thompson",
-          "role": "Sales",
-          "email": "xhamilton@flynn.com",
-          "phone": "697-733-0735",
-          "is_primary": false
-        }
-      ],
-      "created_at": "2026-09-04T09:48:26.666794",
-      "updated_at": "2025-10-30T09:48:26.708959"
-    },
-    {
-      "supplier_code": "SUP-000008",
-      "name": "Hall Inc",
-      "country": "Sweden",
-      "country_code": "SE",
-      "tax_id": "SE741844949",
-      "duns": "469602172",
-      "status": "blocked",
-      "is_preferred": false,
-      "default_currency": "SEK",
-      "payment_terms": {
-        "code": "NET45",
-        "days": 45
-      },
-      "address": {
-        "line1": "01525 Ramos Burgs",
-        "city": "West Linda",
-        "postal_code": "25444",
-        "country_code": "SE"
-      },
-      "contacts": [
-        {
-          "name": "Carla Miller",
-          "role": "Account Manager",
-          "email": "blevinsstacy@edwards.com",
-          "phone": "001-837-739-2353x308",
-          "is_primary": true
-        }
-      ],
-      "created_at": "2026-09-04T09:48:26.666794",
-      "updated_at": "2025-10-28T09:48:26.708959"
-    },
-    {
-      "supplier_code": "SUP-000009",
-      "name": "Wilson, Jones and Johnson",
-      "country": "United States",
-      "country_code": "US",
-      "tax_id": null,
-      "duns": "264860388",
-      "status": "pending",
-      "is_preferred": false,
-      "default_currency": "USD",
-      "payment_terms": {
-        "code": "NET15",
-        "days": 15
-      },
-      "address": {
-        "line1": "8334 Flynn Green",
-        "city": "Derrickside",
-        "postal_code": "92704",
-        "country_code": "US"
-      },
-      "contacts": [
-        {
-          "name": "Kevin Allen",
-          "role": "Account Manager",
-          "email": "amorales@yoder.org",
-          "phone": null,
-          "is_primary": true
+            "vendor_number": "V-0514",
+            "vendor_name": "Lynch, Cooper and Vasquez",
+            "vendor_address": "785 Frederick Forest",
+            "vendor_post_code": "08253",
+            "vendor_country": "France",
+            "vendor_group": "Professional Services",
+            "vendor_tax_number": "FR81452870",
+            "created_at": "2026-09-10T21:05:03.227065"
         },
         {
-          "name": "Jessica Michael",
-          "role": "AP Clerk",
-          "email": "danielhoffman@rojas.com",
-          "phone": "345.463.4145x6534",
-          "is_primary": false
+            "vendor_number": "V-0522",
+            "vendor_name": "Hernandez Ltd",
+            "vendor_address": "2597 Tracy Alley",
+            "vendor_post_code": "38028",
+            "vendor_country": "Netherlands",
+            "vendor_group": "Service Providers",
+            "vendor_tax_number": "NL759401435",
+            "created_at": "2026-09-10T21:05:03.227065"
         }
-      ],
-      "created_at": "2026-09-04T09:48:26.666794",
-      "updated_at": "2025-11-26T09:48:26.708959"
-    },
-    {
-      "supplier_code": "SUP-000010",
-      "name": "Sandoval-Boyle",
-      "country": "Netherlands",
-      "country_code": "NL",
-      "tax_id": "NL239003595",
-      "duns": "163509837",
-      "status": "blocked",
-      "is_preferred": false,
-      "default_currency": "EUR",
-      "payment_terms": {
-        "code": "IMMEDIATE",
-        "days": 0
-      },
-      "address": {
-        "line1": "48835 Paul Roads Suite 690",
-        "city": "Port Adamview",
-        "postal_code": "17479",
-        "country_code": "NL"
-      },
-      "contacts": [
-        {
-          "name": "Susan Gray",
-          "role": "Account Manager",
-          "email": "tallen@pierce.info",
-          "phone": "(648)230-5080x89372",
-          "is_primary": true
-        }
-      ],
-      "created_at": "2026-09-04T09:48:26.666794",
-      "updated_at": "2026-01-22T09:48:26.708959"
+    ],
+    "page": {
+        "limit": 10,
+        "offset": 0,
+        "total": 20,
+        "returned": 10,
+        "has_more": true,
+        "next_offset": 10
     }
-  ],
-  "page": {
-    "limit": 10,
-    "offset": 0,
-    "total": 118,
-    "returned": 10,
-    "has_more": true,
-    "next_offset": 10
-  }
 }

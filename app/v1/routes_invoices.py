@@ -8,16 +8,23 @@ request stays a read: it returns 200, creates nothing, and can be repeated.
 Pagination is keyset (WHERE id > last_id ORDER BY id) rather than offset, and
 the response deliberately omits a total, so the only correct way to extract
 everything is to follow next_cursor until it comes back null.
+
+These two routes are also the only ones on /v1 that respond in XML rather
+than JSON (see xml_render.py) -- a deliberate point of contrast: same data,
+same error envelope (errors here are still the standard JSON envelope,
+untouched), different wire format on success. Every other /v1 route,
+including the /unstable/* lab routes that reuse execute_search() below,
+stays JSON.
 """
 import time
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Path, Request
+from fastapi import APIRouter, Depends, Path, Request, Response
 from sqlalchemy.orm import Session, joinedload
 
 from app import models
 from app.database import get_db
-from app.v1 import projections, schemas
+from app.v1 import projections, schemas, xml_render
 from app.v1.cursor import InvalidCursor, decode_cursor, encode_cursor
 from app.v1.deps import current_user
 from app.v1.errors import ApiError
@@ -130,17 +137,74 @@ def execute_search(
     )
 
 
-@router.post("/search", response_model=schemas.InvoiceSearchResponse)
+@router.post(
+    "/search",
+    response_class=Response,
+    responses={
+        200: {
+            "description": "Invoice search results, as XML (not JSON).",
+            "content": {
+                "application/xml": {
+                    "example": (
+                        "<invoice_search_response>\n"
+                        "  <data>\n"
+                        "    <item>\n"
+                        "      <invoice_number>INV-2025-001</invoice_number>\n"
+                        "      <vendor_number>V-0795</vendor_number>\n"
+                        "      <accounting_date>2025-01-17</accounting_date>\n"
+                        "      <line_items>...</line_items>\n"
+                        "    </item>\n"
+                        "  </data>\n"
+                        "  <page>...</page>\n"
+                        "  <meta>...</meta>\n"
+                        "</invoice_search_response>"
+                    )
+                }
+            },
+        }
+    },
+)
 def search_invoices(
     payload: schemas.InvoiceSearchRequest,
     request: Request,
     db: Session = Depends(get_db),
     _: models.User = Depends(current_user),
 ):
-    return execute_search(payload, request, db)
+    """Same request shape as always (a JSON filter body) -- but the response
+    is XML, not JSON. See xml_render.search_response_to_xml for the shape.
+    """
+    result = execute_search(payload, request, db)
+    return Response(content=xml_render.search_response_to_xml(result), media_type="application/xml")
 
 
-@router.get("/{invoice_number}", response_model=schemas.InvoiceOut)
+@router.get(
+    "/{invoice_number}",
+    response_class=Response,
+    responses={
+        200: {
+            "description": "One fully-expanded invoice, as XML (not JSON).",
+            "content": {
+                "application/xml": {
+                    "example": (
+                        "<invoice>\n"
+                        "  <invoice_number>INV-2025-001</invoice_number>\n"
+                        "  <vendor_number>V-0795</vendor_number>\n"
+                        "  <accounting_date>2025-01-17</accounting_date>\n"
+                        "  <line_items>\n"
+                        "    <item>\n"
+                        "      <line_item>1</line_item>\n"
+                        "      <purchasing_line_description>Office furniture</purchasing_line_description>\n"
+                        "      <quantity>47</quantity>\n"
+                        "      <postings>...</postings>\n"
+                        "    </item>\n"
+                        "  </line_items>\n"
+                        "</invoice>"
+                    )
+                }
+            },
+        }
+    },
+)
 def get_invoice(
     invoice_number: str = Path(
         ...,
@@ -149,10 +213,11 @@ def get_invoice(
     db: Session = Depends(get_db),
     _: models.User = Depends(current_user),
 ):
-    """One fully-expanded invoice, addressed by its business key.
+    """One fully-expanded invoice, addressed by its business key, as XML.
 
     Addressing by invoice_number rather than a surrogate id is deliberate: it
-    is the key a finance person would actually quote.
+    is the key a finance person would actually quote. A 404 here still comes
+    back as the standard JSON error envelope -- only the success body is XML.
     """
     invoice = (
         _base_query(db)
@@ -165,4 +230,5 @@ def get_invoice(
             f"No invoice with number '{invoice_number}'.",
             details=[{"field": "invoice_number", "issue": "not_found"}],
         )
-    return projections.invoice_to_out(invoice)
+    result = projections.invoice_to_out(invoice)
+    return Response(content=xml_render.invoice_to_xml(result), media_type="application/xml")

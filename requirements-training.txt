@@ -6,3 +6,4 @@
 #   .\.venv\Scripts\python.exe -m pip install -r requirements-training.txt
 requests==2.32.3
 pandas==2.2.3
+xmltodict==1.0.4

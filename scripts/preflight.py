@@ -17,6 +17,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import xml.etree.ElementTree as ET
 from decimal import Decimal
 
 PASS, FAIL = "PASS", "FAIL"
@@ -32,6 +33,52 @@ def record(ok, label, detail=""):
 def _lower(headers):
     """HTTP header names are case-insensitive; Starlette emits them lowercased."""
     return {k.lower(): v for k, v in headers.items()}
+
+
+def _xml_el_to_value(el):
+    """Generic ElementTree -> dict/list/str, using this API's own convention:
+    a wrapper element whose children are ALL <item> is a list; anything else
+    with children is a dict; a childless element is its own text (or None).
+    """
+    children = list(el)
+    if not children:
+        return el.text
+    if all(c.tag == "item" for c in children):
+        return [_xml_el_to_value(c) for c in children]
+    return {c.tag: _xml_el_to_value(c) for c in children}
+
+
+def _parse_invoice_xml(raw):
+    """The two invoice endpoints return XML, not JSON (see xml_render.py).
+    Reshape it back into the same dict/list/int/bool/None shape the rest of
+    this script already expects from JSON -- XML itself has no native
+    number/boolean type, so the handful of page/meta fields that are really
+    numeric or boolean need an explicit cast after the generic parse.
+    """
+    root = ET.fromstring(raw)
+    parsed = _xml_el_to_value(root)
+    if root.tag == "invoice_search_response":
+        page, meta = parsed["page"], parsed["meta"]
+        for key in ("page_size", "returned", "estimated_total"):
+            page[key] = int(page[key]) if page[key] is not None else None
+        page["has_more"] = page["has_more"] == "true"
+        for key in ("elapsed_ms", "filters_applied"):
+            meta[key] = int(meta[key]) if meta[key] is not None else None
+    return parsed
+
+
+def _parse_body(raw, headers):
+    if not raw:
+        return None
+    if "xml" in headers.get("content-type", ""):
+        try:
+            return _parse_invoice_xml(raw)
+        except ET.ParseError:
+            return {"_raw": raw[:300]}
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return {"_raw": raw[:300]}
 
 
 def call(base, method, path, token=None, body=None, form=None, headers=None, timeout=60):
@@ -53,14 +100,10 @@ def call(base, method, path, token=None, body=None, form=None, headers=None, tim
     try:
         with urllib.request.urlopen(req, timeout=timeout, context=ctx) as r:
             raw = r.read().decode()
-            return r.status, (json.loads(raw) if raw else None), _lower(r.headers)
+            return r.status, _parse_body(raw, _lower(r.headers)), _lower(r.headers)
     except urllib.error.HTTPError as e:
         raw = e.read().decode()
-        try:
-            parsed = json.loads(raw) if raw else None
-        except json.JSONDecodeError:
-            parsed = {"_raw": raw[:300]}
-        return e.code, parsed, _lower(e.headers)
+        return e.code, _parse_body(raw, _lower(e.headers)), _lower(e.headers)
     except (urllib.error.URLError, OSError, TimeoutError) as e:
         # Nothing listening, DNS failure, a proxy refusing, a TLS problem. Report
         # it as status 0 so the caller can say something useful instead of
@@ -254,7 +297,7 @@ def main():
         first_posting = deep["line_items"][0]["postings"][0]
         record(
             isinstance(first_posting["line_amount"], str),
-            "line_amount arrives as a JSON string, not a number",
+            "line_amount arrives as text, not a number (this endpoint is XML)",
             repr(first_posting["line_amount"]),
         )
         total = sum(

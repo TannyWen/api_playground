@@ -14,7 +14,7 @@ import argparse
 import os
 import random
 import re
-import secrets
+import string
 import sys
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -86,23 +86,6 @@ VENDOR_COUNTRIES = [
 
 # Deliberately unambiguous: no 0/O, no 1/l/I, nothing that breaks when dictated
 # across a room or typed by hand into Postman.
-WORDLIST = """
-amber anchor apple arbor arrow aspen atlas autumn azure basin beacon berry
-birch bishop bramble branch brass bravo breeze bridge bronze brook cactus
-canyon carbon cedar chalk cherry cinder citrus clover cobalt comet copper
-coral cotton crane crater crest crimson crystal cypress dahlia dapple delta
-dune ember fable falcon fern flint forest fossil garnet gentle ginger granite
-gravel grove harbor harvest hazel heather hollow indigo ivory jasper juniper
-kestrel lagoon lantern laurel lentil lichen lilac linen lotus lumen maple
-marble meadow mesa mineral mistral nectar nimbus nutmeg oasis olive onyx opal
-orchard osprey pebble pepper pewter pine plateau plum pollen poplar prairie
-quarry quartz quiver ravine reed ridge rowan rubble saffron sage sandal sequoia
-shale silver socket spruce steppe summit tamarind teak thistle thorn tide
-timber topaz trellis tulip tundra turret velvet vesper walnut willow zephyr
-""".split()
-WORDLIST = [w for w in WORDLIST if w.isascii() and w.isalpha()]
-
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -111,20 +94,32 @@ def _slugify(name: str) -> str:
     return slug or "member"
 
 
-def _make_password(rng: random.Random | None = None) -> str:
-    """Word-word-NNNN, e.g. amber-falcon-4827.
+PASSWORD_LENGTH = 14
+# Deliberately excludes shell-special characters (` $ \ ! " ' ; & | < > ( ) { } [ ]
+# and space) so a password is still safe to paste straight into a terminal
+# (e.g. a curl command), not just into Postman.
+_SPECIAL_CHARS = "-_@#%^*+=~"
 
-    Cryptographically random by default (manual `seed-users` runs). Pass a
-    seeded `random.Random` for deterministic output instead -- used by
-    `auto_seed_on_start` so a restart regenerates the exact same passwords
-    rather than invalidating every printed credential card.
+
+def _make_password(rng: random.Random | None = None, length: int = PASSWORD_LENGTH) -> str:
+    """A random `length`-character password with upper, lower, digit, and a
+    special character all guaranteed present -- no dictionary-word pattern.
+
+    Cryptographically random by default (manual `seed-users` runs), via
+    `random.SystemRandom` (the OS's CSPRNG -- the same source `secrets`
+    itself draws from). Pass a seeded `random.Random` instead for
+    deterministic output -- used by `auto_seed_on_start` so a restart
+    regenerates the exact same passwords rather than invalidating every
+    printed credential card.
     """
-    choose = rng.choice if rng else secrets.choice
-    number = rng.randrange(1000, 10000) if rng else (secrets.randbelow(9000) + 1000)
-    a, b = choose(WORDLIST), choose(WORDLIST)
-    while b == a:
-        b = choose(WORDLIST)
-    return f"{a}-{b}-{number}"
+    source = rng or random.SystemRandom()
+    pools = (string.ascii_uppercase, string.ascii_lowercase, string.digits, _SPECIAL_CHARS)
+
+    chars = [source.choice(pool) for pool in pools]
+    all_chars = "".join(pools)
+    chars += [source.choice(all_chars) for _ in range(length - len(chars))]
+    source.shuffle(chars)
+    return "".join(chars)
 
 
 def _next_invoice_suffix(db) -> int:

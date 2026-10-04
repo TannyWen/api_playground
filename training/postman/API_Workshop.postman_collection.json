@@ -334,24 +334,25 @@
       ]
     },
     {
-      "name": "2. Data structure (D1-D3)",
-      "description": "Work out the shape of the data before you write any code against it.",
+      "name": "2. Data structure (D1-D2)",
+      "description": "Both requests here hit the two XML-only endpoints (see Part 2 -- Data Structure): the response body is XML, not JSON, even though D2's request body stays JSON. An error on either (a 404, a 422) still comes back as the standard JSON error envelope -- only the successful data body is XML.",
       "item": [
         {
-          "name": "D1  GET /openapi.json  (the machine-readable contract)",
+          "name": "Ping  GET /v1/ping  (no auth)",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/openapi.json",
+              "raw": "{{base_url}}/v1/ping",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
-                "openapi.json"
+                "v1",
+                "ping"
               ]
             },
-            "description": "The full API contract as JSON. Every field, every type.\n\nFind the InvoiceOut schema and list its fields with their types.\nThe human-friendly version of this is at {{base_url}}/docs",
+            "description": "Is the API reachable at all? No token needed.\n\nIf this fails, it is a network problem, not an auth problem:\n  - wrong host or port\n  - http:// vs https://\n  - a proxy or VPN in the way\n  - on Azure, a 20-30s cold start on the very first call\n\nCheck app_version / git_commit / uptime_seconds in the body to\nconfirm which deployment you're actually talking to. A restart\nresets uptime_seconds and re-runs the seed, so data and logins\ncome back exactly as before -- but expect a few extra seconds\non the very next request while that happens.",
             "auth": {
               "type": "noauth"
             }
@@ -364,14 +365,21 @@
                 "exec": [
                   "pm.test('status is 200', function () {",
                   "    pm.response.to.have.status(200);",
-                  "});"
+                  "});",
+                  "pm.test('reports ok', function () {",
+                  "    pm.expect(pm.response.json().status).to.eql('ok');",
+                  "});",
+                  "const body = pm.response.json();",
+                  "console.log('app_version=' + body.app_version +",
+                  "    ' git_commit=' + body.git_commit +",
+                  "    ' uptime_seconds=' + body.uptime_seconds);"
                 ]
               }
             }
           ]
         },
         {
-          "name": "D2  GET /v1/invoices/{number}  one fully nested invoice",
+          "name": "D1  GET /v1/invoices/{number}  one fully nested invoice (XML)",
           "request": {
             "method": "GET",
             "header": [],
@@ -386,7 +394,7 @@
                 "{{sample_invoice}}"
               ]
             },
-            "description": "One invoice, fully expanded. This is the shape you will flatten.\n\nMap the nesting and mark the cardinality of each level:\n  invoice -> line_items[] -> postings[]\n\nNote vendor_number is a plain field on the invoice, NOT a nested\nobject -- resolving it to a name/address means calling\nGET /v1/master-data/vendors separately. That is deliberate: it is\nhow a real transactional extract references master data.\n\nHow many rows would a fully exploded flat table have for THIS\none invoice? (lines x postings per line)"
+            "description": "One invoice, fully expanded. This is the shape you will flatten.\n\nThe response is XML, not JSON (see WHAT IS XML? in 02_data_structure.py).\nCheck the Content-Type header, and look at the body: it is an\n<invoice> document, with <line_items><item>...</item></line_items>\nand <postings><item>...</item></postings> nested inside -- 'item' is\nthe repeated-child convention for every list.\n\nMap the nesting and mark the cardinality of each level:\n  invoice -> line_items[] -> postings[]\n\nNote vendor_number is a plain field on the invoice, NOT a nested\nobject -- resolving it to a name/address means calling\nGET /v1/master-data/vendors separately.\n\nGET vs POST, made concrete: this is GET because the whole filter is\none simple thing -- an invoice number -- that fits cleanly into the\nURL path itself. No body at all. Compare with D2.\n\nA 404 on this same endpoint still comes back as the standard JSON\nerror envelope (see E1c) -- only the success body is XML."
           },
           "event": [
             {
@@ -397,23 +405,22 @@
                   "pm.test('status is 200', function () {",
                   "    pm.response.to.have.status(200);",
                   "});",
-                  "const inv = pm.response.json();",
-                  "const lines = inv.line_items || [];",
-                  "const postings = lines.reduce((n, li) => n + (li.postings || []).length, 0);",
-                  "console.log(inv.invoice_number + ' (vendor ' + inv.vendor_number + '): ' +",
-                  "    lines.length + ' lines, ' + postings +",
-                  "    ' postings -> ' + postings + ' rows when fully exploded');",
-                  "const firstAmount = lines[0].postings[0].line_amount;",
-                  "pm.test('line_amount is a STRING, not a number', function () {",
-                  "    pm.expect(firstAmount).to.be.a('string');",
-                  "});"
+                  "pm.test('Content-Type is XML', function () {",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('xml');",
+                  "});",
+                  "const xml = pm.response.text();",
+                  "pm.test('body is an <invoice> document', function () {",
+                  "    pm.expect(xml).to.include('<invoice>');",
+                  "});",
+                  "const match = xml.match(/<invoice_number>([^<]+)<\\/invoice_number>/);",
+                  "console.log('invoice_number=' + (match ? match[1] : '(not found)'));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "D3  POST /v1/invoices/search  page_size=1",
+          "name": "D2  POST /v1/invoices/search  page_size=1 (XML)",
           "request": {
             "method": "POST",
             "header": [
@@ -433,7 +440,7 @@
                 "search"
               ]
             },
-            "description": "The same nesting, but wrapped in a paginated envelope.\n\nNote the three top-level keys: data, page, meta.\nThe rows are in `data` -- not at the top level.",
+            "description": "The same nesting as D1, but wrapped in a paginated envelope -- and\nagain, the response is XML, not JSON.\n\nThe envelope is <invoice_search_response> wrapping <data>, <page>,\nand <meta>, same three-part shape as the JSON version just spelled\nout in tags instead of keys. The rows are in <data> -- not at the\ntop level.\n\nGET vs POST, made concrete: this is still a READ (200, nothing\ncreated, safe to repeat), exactly like D1 -- but the filter here\n(page_size, an optional cursor, and in a real call vendor/account/\ndate filters too) is too structured to cram into a URL safely. So\nit moves into a JSON body, and the method becomes POST even though\nnothing is being created. Compare with D1: same kind of operation,\ndifferent method, because the shape of the input differs.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"page_size\": 1\n}",
@@ -452,7 +459,16 @@
                 "exec": [
                   "pm.test('status is 200', function () {",
                   "    pm.response.to.have.status(200);",
-                  "});"
+                  "});",
+                  "pm.test('Content-Type is XML', function () {",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('xml');",
+                  "});",
+                  "const xml = pm.response.text();",
+                  "pm.test('body is an <invoice_search_response> document', function () {",
+                  "    pm.expect(xml).to.include('<invoice_search_response>');",
+                  "});",
+                  "const count = (xml.match(/<invoice_number>/g) || []).length;",
+                  "console.log('invoices in this page: ' + count);"
                 ]
               }
             }
@@ -461,11 +477,52 @@
       ]
     },
     {
-      "name": "3. Pagination (P1-P2)",
-      "description": "Two different pagination styles, one per endpoint -- because you will meet both in the wild.\n\nMaster data uses limit/offset. Invoice search uses cursors.",
+      "name": "3. Pagination (P1-P4)",
+      "description": "Two different pagination styles, one per endpoint -- because you will meet both in the wild. Master data uses limit/offset (P1). Invoice search uses cursors (P2).\n\nP3 and P4 are ground-truth reference calls for two debugging exercises in VS Code (training/starters/03a_pagination_offset.py and 03b_pagination_cursor.py) -- each of those scripts runs, drifts (duplicates and/or an undercount), and you fix a one-line bug.",
       "item": [
         {
-          "name": "P1a  master-data  limit=5  offset=0",
+          "name": "Ping  GET /v1/ping  (no auth)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/ping",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "ping"
+              ]
+            },
+            "description": "Is the API reachable at all? No token needed.\n\nIf this fails, it is a network problem, not an auth problem:\n  - wrong host or port\n  - http:// vs https://\n  - a proxy or VPN in the way\n  - on Azure, a 20-30s cold start on the very first call\n\nCheck app_version / git_commit / uptime_seconds in the body to\nconfirm which deployment you're actually talking to. A restart\nresets uptime_seconds and re-runs the seed, so data and logins\ncome back exactly as before -- but expect a few extra seconds\non the very next request while that happens.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('reports ok', function () {",
+                  "    pm.expect(pm.response.json().status).to.eql('ok');",
+                  "});",
+                  "const body = pm.response.json();",
+                  "console.log('app_version=' + body.app_version +",
+                  "    ' git_commit=' + body.git_commit +",
+                  "    ' uptime_seconds=' + body.uptime_seconds);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P1  master-data  offset pagination demo",
           "request": {
             "method": "GET",
             "header": [],
@@ -490,7 +547,7 @@
                 }
               ]
             },
-            "description": "Offset pagination. Look at the `page` object:\n  total       how many there are altogether\n  has_more    is there another page\n  next_offset the offset to ask for next (null on the last page)\n\nBefore running P1b: what will has_more be? Predict, then check."
+            "description": "Offset pagination -- you control the window directly with two params:\n  limit    how many rows to return (capped at 50 -- try limit=999 and\n           you get 422, not a silently-capped response)\n  offset   how many rows to skip from the start\n\nChange offset to 5, then 10, then 15 and hit Send again each time --\nwatch the `page` object: `total` stays the same, but `returned` and\n`next_offset` shift, and a different slice of vendor_numbers comes\nback. Try offset=99999 too -- that is NOT an error: you get back 200\nwith an empty items array and has_more=false (no results is not the\nsame as something broke).\n\nThis request is pure demonstration -- nothing here is broken. P3 below\nis where an offset bug produces visibly wrong results, fixed in VS Code\n(training/starters/03a_pagination_offset.py), not here."
           },
           "event": [
             {
@@ -504,131 +561,6 @@
                   "const p = pm.response.json().page;",
                   "console.log('total=' + p.total + ' returned=' + p.returned +",
                   "    ' has_more=' + p.has_more + ' next_offset=' + p.next_offset);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "P1b  master-data  limit=5  offset=5",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/v1/master-data/vendors?limit=5&offset=5",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "master-data",
-                "vendors"
-              ],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "5"
-                },
-                {
-                  "key": "offset",
-                  "value": "5"
-                }
-              ]
-            },
-            "description": "Page 2. Same total, different rows."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "P1c  master-data  offset past the end  -> 200 with []",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/v1/master-data/vendors?limit=5&offset=99999",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "master-data",
-                "vendors"
-              ],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "5"
-                },
-                {
-                  "key": "offset",
-                  "value": "99999"
-                }
-              ]
-            },
-            "description": "Asking beyond the last row is NOT an error. You get 200 with an\nempty items array and has_more=false.\n\n'No results' and 'something went wrong' are different things, and\nyour extraction code has to tell them apart."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 200, not 404', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "pm.test('items is empty', function () {",
-                  "    pm.expect(pm.response.json().items).to.be.an('array').that.is.empty;",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "P1d  master-data  limit=999  -> 422",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/v1/master-data/vendors?limit=999",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "master-data",
-                "vendors"
-              ],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "999"
-                }
-              ]
-            },
-            "description": "There is a hard cap on page size. Asking for more is rejected.\n\nRead the cap out of the error body rather than the docs -- that is\nwhat you would have to do against a real vendor API."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 422', function () {",
-                  "    pm.response.to.have.status(422);",
-                  "});"
                 ]
               }
             }
@@ -655,7 +587,7 @@
                 "search"
               ]
             },
-            "description": "Cursor pagination. Note what `page` does and does not contain:\n  next_cursor      an opaque token for the next page\n  estimated_total  present on page 1 ONLY\n\nThere is no page count. Run P2b to see why that matters.\n\nThe cursor is saved to {{next_cursor}} for you.",
+            "description": "Cursor pagination -- the other style this API uses, on invoice search.\nThe request body below is still JSON -- only the RESPONSE is XML (see\nPart 2 -- Data Structure). Note what the response's <page> element does\nand does not contain:\n  next_cursor      an opaque token for the next page\n  estimated_total  present on page 1 ONLY\n\nThere is no page count, and no offset param to hand-pick a page --\nthe only way to get page 2 is to send back the exact next_cursor this\npage gives you. Run P2b to do that.\n\nThe cursor is saved to {{next_cursor}} for you.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"page_size\": 10\n}",
@@ -675,10 +607,17 @@
                   "pm.test('status is 200', function () {",
                   "    pm.response.to.have.status(200);",
                   "});",
-                  "const p = pm.response.json().page;",
-                  "pm.environment.set('next_cursor', p.next_cursor);",
-                  "console.log('estimated_total=' + p.estimated_total);",
-                  "console.log('next_cursor=' + p.next_cursor);",
+                  "pm.test('Content-Type is XML', function () {",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('xml');",
+                  "});",
+                  "const xml = pm.response.text();",
+                  "const totalMatch = xml.match(/<estimated_total>([^<]*)<\\/estimated_total>/);",
+                  "const cursorMatch = xml.match(/<next_cursor>([^<]*)<\\/next_cursor>/);",
+                  "const estimated_total = totalMatch ? totalMatch[1] : null;",
+                  "const next_cursor = cursorMatch ? cursorMatch[1] : null;",
+                  "pm.environment.set('next_cursor', next_cursor);",
+                  "console.log('estimated_total=' + estimated_total);",
+                  "console.log('next_cursor=' + next_cursor);",
                   "console.log('(decode it: it is just base64 JSON)');"
                 ]
               }
@@ -706,7 +645,7 @@
                 "search"
               ]
             },
-            "description": "Page 2, using the cursor P2a saved.\n\nLook at estimated_total now. It is null.\n\nSo you cannot compute 'total / page_size' to know when to stop.\nThe only correct rule is: keep going until next_cursor is null.\nThat is deliberate -- it is how most real cursor APIs behave.",
+            "description": "Page 2, using the cursor P2a saved.\n\nLook at estimated_total now. It is empty/null.\n\nSo you cannot compute total / page_size to know when to stop.\nThe only correct rule is: keep going until next_cursor is empty/null.\nThat is deliberate -- it is how most real cursor APIs behave.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"page_size\": 10,\n  \"cursor\": \"{{next_cursor}}\"\n}",
@@ -726,18 +665,66 @@
                   "pm.test('status is 200', function () {",
                   "    pm.response.to.have.status(200);",
                   "});",
-                  "const p = pm.response.json().page;",
-                  "pm.test('estimated_total is null on page 2', function () {",
-                  "    pm.expect(p.estimated_total).to.be.null;",
+                  "const xml = pm.response.text();",
+                  "const totalMatch = xml.match(/<estimated_total>([^<]*)<\\/estimated_total>/);",
+                  "const estimated_total = totalMatch ? totalMatch[1] : null;",
+                  "pm.test('estimated_total is empty/null on page 2', function () {",
+                  "    pm.expect(estimated_total).to.be.null;",
                   "});",
-                  "pm.environment.set('next_cursor', p.next_cursor);"
+                  "const cursorMatch = xml.match(/<next_cursor>([^<]*)<\\/next_cursor>/);",
+                  "pm.environment.set('next_cursor', cursorMatch ? cursorMatch[1] : null);"
                 ]
               }
             }
           ]
         },
         {
-          "name": "P2c  search  broken cursor  -> 400",
+          "name": "P3  master-data  limit=5  offset=0  (ground truth)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/master-data/vendors?limit=5&offset=0",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "master-data",
+                "vendors"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "5"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "Ground truth for the offset-pagination ticket you debug in VS Code\n(training/starters/03a_pagination_offset.py).\n\nNote page.total here -- that is exactly how many vendors your VS Code\nscript needs to end up with, each one appearing exactly once. If it\ncollects a different count, or any vendor_number twice, the bug in\nthat script is still live."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const p = pm.response.json().page;",
+                  "console.log('total=' + p.total + ' has_more=' + p.has_more +",
+                  "    ' next_offset=' + p.next_offset);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P4  search  page 1  (ground truth)",
           "request": {
             "method": "POST",
             "header": [
@@ -757,10 +744,10 @@
                 "search"
               ]
             },
-            "description": "A malformed cursor gives 400, not 422.\n\nThe difference: 422 means the request was the wrong SHAPE.\n400 here means the shape was fine but the VALUE was meaningless.\nWorth distinguishing when you are writing error handling.",
+            "description": "Ground truth for the cursor-pagination ticket you debug in VS Code\n(training/starters/03b_pagination_cursor.py). The request body is\nJSON; the response is XML (see Part 2 -- Data Structure).\n\nNote estimated_total and next_cursor here. Your VS Code script should\nend up collecting estimated_total invoices in total, each\ninvoice_number appearing exactly once. If it does not -- especially if\nthe same invoice_numbers keep repeating -- the bug in that script is\nstill live.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"page_size\": 10,\n  \"cursor\": \"not-a-real-cursor\"\n}",
+              "raw": "{\n  \"page_size\": 10\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -774,9 +761,17 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('status is 400', function () {",
-                  "    pm.response.to.have.status(400);",
-                  "});"
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Content-Type is XML', function () {",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('xml');",
+                  "});",
+                  "const xml = pm.response.text();",
+                  "const totalMatch = xml.match(/<estimated_total>([^<]*)<\\/estimated_total>/);",
+                  "const cursorMatch = xml.match(/<next_cursor>([^<]*)<\\/next_cursor>/);",
+                  "console.log('estimated_total=' + (totalMatch ? totalMatch[1] : null));",
+                  "console.log('next_cursor=' + (cursorMatch ? cursorMatch[1] : null));"
                 ]
               }
             }
@@ -788,6 +783,47 @@
       "name": "4. Flatten to files (F1-F3)",
       "description": "Save these two responses to disk, then switch to VS Code.\n\nIn Postman: Send, then the Save Response dropdown (top right of the\nresponse pane) -> Save to a file. Put them in training/data/.\n\nPre-saved copies are already in training/data/samples/ if you would\nrather not wait.",
       "item": [
+        {
+          "name": "Ping  GET /v1/ping  (no auth)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/ping",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "ping"
+              ]
+            },
+            "description": "Is the API reachable at all? No token needed.\n\nIf this fails, it is a network problem, not an auth problem:\n  - wrong host or port\n  - http:// vs https://\n  - a proxy or VPN in the way\n  - on Azure, a 20-30s cold start on the very first call\n\nCheck app_version / git_commit / uptime_seconds in the body to\nconfirm which deployment you're actually talking to. A restart\nresets uptime_seconds and re-runs the seed, so data and logins\ncome back exactly as before -- but expect a few extra seconds\non the very next request while that happens.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('reports ok', function () {",
+                  "    pm.expect(pm.response.json().status).to.eql('ok');",
+                  "});",
+                  "const body = pm.response.json();",
+                  "console.log('app_version=' + body.app_version +",
+                  "    ' git_commit=' + body.git_commit +",
+                  "    ' uptime_seconds=' + body.uptime_seconds);"
+                ]
+              }
+            }
+          ]
+        },
         {
           "name": "F1  master-data  limit=10   -> save as master_data_page1.json",
           "request": {
@@ -827,7 +863,7 @@
           ]
         },
         {
-          "name": "F2/F3  search  page_size=10  -> save as invoices_page1.json",
+          "name": "F2/F3  search  page_size=10  -> save as invoices_page1.xml",
           "request": {
             "method": "POST",
             "header": [
@@ -847,7 +883,7 @@
                 "search"
               ]
             },
-            "description": "Save this response to training/data/invoices_page1.json\n\nThen produce, in Python:\n  F2  one row per line item  (carry the invoice header down)\n  F3  one row per posting    (carry invoice AND line down)\n\nThen reconcile -- but at the INVOICE level, not per line: every\ninvoice's postings must sum to exactly 0.00, the way a real\ndouble-entry journal entry balances (expense + VAT, both debit,\nagainst Vendor Payable, credit). It does balance -- if yours\ndoesn't, look at the dtype of your money column.",
+            "description": "Save this response to training/data/samples/invoices_page1.xml\n\nThe response is XML, not JSON (see Part 2 -- Data Structure) -- save\nit with a .xml extension, not .json, so the saved file actually\nmatches its own content.\n\nThen produce, in Python:\n  F2  one row per line item  (carry the invoice header down)\n  F3  one row per posting    (carry invoice AND line down)\n\nThen reconcile -- but at the INVOICE level, not per line: every\ninvoice's postings must sum to exactly 0.00, the way a real\ndouble-entry journal entry balances (expense + VAT, both debit,\nagainst Vendor Payable, credit). It does balance -- if yours\ndoesn't, look at the dtype of your money column.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"page_size\": 10\n}",
@@ -867,11 +903,14 @@
                   "pm.test('status is 200', function () {",
                   "    pm.response.to.have.status(200);",
                   "});",
-                  "const rows = pm.response.json().data;",
-                  "const lines = rows.reduce((n, i) => n + (i.line_items || []).length, 0);",
-                  "const postings = rows.reduce((n, i) => n +",
-                  "    (i.line_items || []).reduce((m, li) => m + (li.postings || []).length, 0), 0);",
-                  "console.log('This response holds: ' + rows.length + ' invoices, ' +",
+                  "pm.test('Content-Type is XML', function () {",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('xml');",
+                  "});",
+                  "const xml = pm.response.text();",
+                  "const invoices = (xml.match(/<invoice_number>/g) || []).length;",
+                  "const lines = (xml.match(/<line_item>/g) || []).length;",
+                  "const postings = (xml.match(/<account_number>/g) || []).length;",
+                  "console.log('This response holds: ' + invoices + ' invoices, ' +",
                   "    lines + ' line items, ' + postings + ' postings');",
                   "console.log('So your three flat files should have exactly those row counts.');"
                 ]
@@ -885,6 +924,47 @@
       "name": "5. Error handling (E1-E3)",
       "description": "Every one of these fails on purpose. Read the bodies carefully.",
       "item": [
+        {
+          "name": "Ping  GET /v1/ping  (no auth)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/ping",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "ping"
+              ]
+            },
+            "description": "Is the API reachable at all? No token needed.\n\nIf this fails, it is a network problem, not an auth problem:\n  - wrong host or port\n  - http:// vs https://\n  - a proxy or VPN in the way\n  - on Azure, a 20-30s cold start on the very first call\n\nCheck app_version / git_commit / uptime_seconds in the body to\nconfirm which deployment you're actually talking to. A restart\nresets uptime_seconds and re-runs the seed, so data and logins\ncome back exactly as before -- but expect a few extra seconds\non the very next request while that happens.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('reports ok', function () {",
+                  "    pm.expect(pm.response.json().status).to.eql('ok');",
+                  "});",
+                  "const body = pm.response.json();",
+                  "console.log('app_version=' + body.app_version +",
+                  "    ' git_commit=' + body.git_commit +",
+                  "    ' uptime_seconds=' + body.uptime_seconds);"
+                ]
+              }
+            }
+          ]
+        },
         {
           "name": "E1a  two validation errors at once  -> 422",
           "request": {
